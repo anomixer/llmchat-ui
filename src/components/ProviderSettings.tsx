@@ -242,16 +242,16 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                             setBaseUrl(provider.baseUrl)
                         }
                     }}
-                    className="w-full px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                     {availableProviders.map(provider => (
-                        <option key={provider.type} value={provider.type}>
+                        <option key={provider.type} value={provider.type} className="text-gray-900 dark:text-white">
                             {provider.name} {provider.requiresApiKey ? '🔑' : '🏠'}
                         </option>
                     ))}
                 </select>
                 {selectedProvider && (
-                    <p className="text-sm text-gray-400 mt-1">{selectedProvider.description}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedProvider.description}</p>
                 )}
             </div>
 
@@ -263,7 +263,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
                     placeholder="http://localhost:11434"
-                    className="w-full px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                 />
             </div>
 
@@ -276,9 +276,9 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         placeholder="sk-..."
-                        className="w-full px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                     />
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {t('settings.apiKeyLocalHint')}
                     </p>
                 </div>
@@ -292,15 +292,15 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                         <select
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
-                            className="flex-1 px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             {fetchedModels.map(modelName => (
-                                <option key={modelName} value={modelName}>
+                                <option key={modelName} value={modelName} className="text-gray-900 dark:text-white">
                                     {modelName}
                                 </option>
                             ))}
                             {!fetchedModels.includes(model) && model && (
-                                <option value={model}>
+                                <option value={model} className="text-gray-900 dark:text-white">
                                     {model} ({t('admin.llm.current')})
                                 </option>
                             )}
@@ -311,7 +311,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
                             placeholder="llama3"
-                            className="flex-1 px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                         />
                     )}
 
@@ -319,7 +319,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                         <button
                             type="button"
                             onClick={() => setIsManualInput(!isManualInput)}
-                            className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-md text-sm transition-colors"
+                            className="px-3 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white rounded-md text-sm transition-colors"
                             title={isManualInput ? t('admin.llm.selectProvider') : t('admin.llm.modelName')}
                         >
                             {isManualInput ? '📋' : '✏️'}
@@ -350,7 +350,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                     step="0.1"
                     value={temperature}
                     onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
                 />
             </div>
 
@@ -364,7 +364,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                     step="256"
                     value={maxTokens}
                     onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
                 />
             </div>
 
@@ -397,10 +397,10 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
 
             {/* Connection Message */}
             {connectionStatus !== 'idle' && (
-                <div className={`p-3 rounded-md flex items-start gap-2 text-sm ${
-                    connectionStatus === 'success' ? 'bg-green-900/60 text-green-200 border border-green-700' :
-                    connectionStatus === 'error' ? 'bg-red-900/60 text-red-200 border border-red-700' :
-                    'bg-gray-700 text-gray-200'
+                <div className={`p-3 rounded-md flex items-start gap-2 text-sm border ${
+                    connectionStatus === 'success' ? 'bg-green-100 dark:bg-green-900/60 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700' :
+                    connectionStatus === 'error' ? 'bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700' :
+                    'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600'
                 }`}>
                     {connectionStatus === 'success' ? (
                         <Check className="w-5 h-5 flex-shrink-0" />
