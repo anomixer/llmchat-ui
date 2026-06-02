@@ -25,7 +25,37 @@ export default defineConfig(({ mode }) => {
         },
         build: {
             outDir: 'dist',
-            sourcemap: true
+            sourcemap: true,
+            chunkSizeWarningLimit: 1500,
+            rollupOptions: {
+                output: {
+                    manualChunks(id) {
+                        if (id.includes('node_modules')) {
+                            if (
+                                id.includes('react-markdown') || 
+                                id.includes('remark') || 
+                                id.includes('unist') || 
+                                id.includes('vfile') || 
+                                id.includes('micromark') || 
+                                id.includes('mdast') || 
+                                id.includes('parse5') || 
+                                id.includes('hast')
+                            ) {
+                                return 'markdown'
+                            }
+                            if (
+                                id.includes('react-syntax-highlighter') || 
+                                id.includes('prismjs') || 
+                                id.includes('lowlight') || 
+                                id.includes('highlight.js')
+                            ) {
+                                return 'syntax-highlighter'
+                            }
+                            return 'vendor'
+                        }
+                    }
+                }
+            }
         },
         resolve: {
             alias: {
