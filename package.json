@@ -4,6 +4,7 @@
     "description": "Pure client-side Local LLM Chat Application with React frontend",
     "type": "module",
     "scripts": {
+        "start": "vite",
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview"
