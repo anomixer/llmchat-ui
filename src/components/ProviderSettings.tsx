@@ -69,10 +69,10 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                 const response = await fetch(`${cleanBaseUrl}/api/tags`)
                 if (response.ok) {
                     setConnectionStatus('success')
-                    setConnectionMessage('✅ 連接成功')
+                    setConnectionMessage(t('admin.llm.testSuccess'))
                 } else {
                     setConnectionStatus('error')
-                    setConnectionMessage(`❌ 連接失敗：伺服器回應狀態碼 ${response.status}`)
+                    setConnectionMessage(`${t('admin.llm.testFailed')}：${t('admin.llm.statusCodeHint', { status: response.status })}`)
                 }
             } else {
                 const headers: Record<string, string> = {
@@ -95,19 +95,19 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                 })
                 if (response.ok) {
                     setConnectionStatus('success')
-                    setConnectionMessage('✅ 連接成功')
+                    setConnectionMessage(t('admin.llm.testSuccess'))
                 } else if (response.status === 401) {
                     setConnectionStatus('error')
-                    setConnectionMessage('❌ 連接失敗：API Key 無效或授權錯誤 (401)')
+                    setConnectionMessage(`${t('admin.llm.testFailed')}：${t('admin.llm.unauthorizedHint')}`)
                 } else {
                     setConnectionStatus('error')
-                    setConnectionMessage(`❌ 連接失敗：伺服器回應狀態碼 ${response.status}`)
+                    setConnectionMessage(`${t('admin.llm.testFailed')}：${t('admin.llm.statusCodeHint', { status: response.status })}`)
                 }
             }
         } catch (error: any) {
             console.error('Connection check error:', error)
             setConnectionStatus('error')
-            setConnectionMessage('❌ 連接失敗。請確認 API URL 是否正確、伺服器已啟動，並已開啟 CORS 跨來源連線（例如 Ollama 需設定 OLLAMA_ORIGINS=*）。')
+            setConnectionMessage(`${t('admin.llm.testFailed')}。${t('admin.llm.corsHint')}`)
         } finally {
             setIsChecking(false)
         }
@@ -133,8 +133,6 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
 
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-semibold mb-4">🔧 {t('admin.llm.config')}</h2>
-
             {/* Provider 選擇 */}
             <div>
                 <label className="block text-sm font-medium mb-2">{t('admin.llm.selectProvider')}</label>

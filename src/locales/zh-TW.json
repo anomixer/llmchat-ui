@@ -309,7 +309,10 @@
             "current": "當前",
             "testSuccess": "✅ 連接成功",
             "testFailed": "❌ 連接失敗",
-            "testError": "❌ 連接錯誤："
+            "testError": "❌ 連接錯誤：",
+            "corsHint": "請確認 API URL 是否正確、伺服器已啟動，並已開啟 CORS 跨來源連線（例如 Ollama 需設定 OLLAMA_ORIGINS=*）。",
+            "unauthorizedHint": "API Key 無效或授權錯誤 (401)",
+            "statusCodeHint": "伺服器回應狀態碼 {{status}}"
         }
     },
     "systemPrompt": "你是一個有用的AI助手，請用繁體中文回答用戶的問題。"

@@ -306,7 +306,10 @@
             "current": "Current",
             "testSuccess": "✅ Connection successful",
             "testFailed": "❌ Connection failed",
-            "testError": "❌ Connection error: "
+            "testError": "❌ Connection error: ",
+            "corsHint": "Please verify your API URL, ensure the server is running, and CORS is enabled (e.g. set OLLAMA_ORIGINS=* for Ollama).",
+            "unauthorizedHint": "Invalid API Key or authorization error (401)",
+            "statusCodeHint": "Server responded with status code {{status}}"
         }
     },
     "systemPrompt": "You are a helpful AI assistant. Please answer user questions in English."

@@ -306,7 +306,10 @@
             "current": "현재",
             "testSuccess": "✅ 연결에 성공했습니다",
             "testFailed": "❌ 연결에 실패했습니다",
-            "testError": "❌ 연결 오류: "
+            "testError": "❌ 연결 오류: ",
+            "corsHint": "API URL이 올바른지, 서버가 실행 중인지, CORS 교차 출처 연결이 활성화되어 있는지 확인하십시오 (예: Ollama의 경우 OLLAMA_ORIGINS=* 설정 필요).",
+            "unauthorizedHint": "API 키가 올바르지 않거나 인증 오류가 발생했습니다 (401)",
+            "statusCodeHint": "서버가 상태 코드 {{status}}를 반환했습니다"
         }
     },
     "systemPrompt": "당신은 도움이 되는 AI 어시스턴트입니다. 사용자의 질문에 한국어로 답변해 주세요."

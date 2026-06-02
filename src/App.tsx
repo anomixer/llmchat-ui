@@ -1733,7 +1733,7 @@ const App: React.FC = () => {
                     >
                         <div className="flex justify-between items-center mb-4 border-b pb-3 border-gray-200 dark:border-gray-700">
                             <h3 className="text-lg font-semibold flex items-center gap-2">
-                                🔧 API Provider 設置
+                                {t('settings.aiProviderSettings')}
                             </h3>
                             <button 
                                 onClick={() => setShowProviderSettingsModal(false)}

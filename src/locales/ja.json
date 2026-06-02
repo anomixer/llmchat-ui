@@ -306,7 +306,10 @@
             "current": "現在",
             "testSuccess": "✅ 接続に成功しました",
             "testFailed": "❌ 接続に失敗しました",
-            "testError": "❌ 接続エラー： "
+            "testError": "❌ 接続エラー： ",
+            "corsHint": "API URLが正しいこと、サーバーが起動していること、およびCORSクロスドメイン接続が有効になっていることを確認してください（例：OllamaではOLLAMA_ORIGINS=*を設定する必要があります）。",
+            "unauthorizedHint": "APIキーが無効、または認証エラーです (401)",
+            "statusCodeHint": "サーバーがステータスコード {{status}} を返しました"
         }
     },
     "systemPrompt": "あなたは役立つAIアシスタントです。ユーザーの質問に日本語で答えてください。"
