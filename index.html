@@ -1,16 +1,105 @@
 <!doctype html>
-<html lang="zh-TW">
+<html lang="zh-TW" id="html-root">
 
 <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LLMChat</title>
+    <style>
+        /* 載入畫面樣式 */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-screen .loading-content {
+            font-size: 1.125rem;
+            font-weight: 500;
+            text-align: center;
+            padding: 2rem;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+    </style>
 </head>
 
 <body>
+    <div class="loading-screen">
+        <div class="loading-content" id="loading-text">LLMChat 載入中...</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+        // 根據瀏覽器語言設定載入文字和HTML語言屬性
+        (function () {
+            // 載入文字的語言映射
+            const loadingTexts = {
+                'zh-TW': 'LLMChat 載入中...',
+                'zh-CN': 'LLMChat 加载中...',
+                'en': 'LLMChat Loading...',
+                'ja': 'LLMChat 読み込み中...',
+                'ko': 'LLMChat 로딩 중...'
+            };
+
+            // 檢測瀏覽器語言
+            const browserLang = navigator.language || navigator.userLanguage;
+            let detectedLang = 'zh-TW'; // 預設繁體中文
+
+            // 根據瀏覽器語言匹配支援的語言
+            if (browserLang.startsWith('zh-CN') || browserLang.startsWith('zh-SG')) {
+                detectedLang = 'zh-CN';
+            } else if (browserLang.startsWith('zh-')) {
+                detectedLang = 'zh-TW';
+            } else if (browserLang.startsWith('ja')) {
+                detectedLang = 'ja';
+            } else if (browserLang.startsWith('ko')) {
+                detectedLang = 'ko';
+            } else if (browserLang.startsWith('en')) {
+                detectedLang = 'en';
+            }
+
+            // 更新載入文字
+            const loadingText = document.getElementById('loading-text');
+            if (loadingText && loadingTexts[detectedLang]) {
+                loadingText.textContent = loadingTexts[detectedLang];
+            }
+
+            // 更新HTML語言屬性
+            const htmlRoot = document.getElementById('html-root');
+            if (htmlRoot) {
+                htmlRoot.setAttribute('lang', detectedLang);
+            }
+
+            // 將檢測到的語言儲存到localStorage，供React應用使用
+            localStorage.setItem('browserLanguage', detectedLang);
+        })();
+
+        // 當React應用載入時隱藏載入畫面
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                const loadingScreen = document.querySelector('.loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+            }, 100);
+        });
+    </script>
 </body>
 
 </html>

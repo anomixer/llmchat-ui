@@ -1,79 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Settings, Trash2, Moon, Sun, Plus, MessageSquare, Paperclip, X, Mic, MicOff, Volume2, VolumeX, Download } from 'lucide-react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { Send, Bot, User, Settings, Trash2, Moon, Sun, Plus, MessageSquare, Paperclip, X, Mic, MicOff, Volume2, Download, Square, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import MarkdownMessage from './MarkdownMsg'
-
-// Web Speech API types
-declare global {
-    interface Window {
-        SpeechRecognition: typeof SpeechRecognition
-        webkitSpeechRecognition: typeof SpeechRecognition
-    }
-}
-
-interface SpeechRecognition extends EventTarget {
-    continuous: boolean
-    interimResults: boolean
-    lang: string
-    start(): void
-    stop(): void
-    abort(): void
-    onstart: ((this: SpeechRecognition, ev: Event) => any) | null
-    onend: ((this: SpeechRecognition, ev: Event) => any) | null
-    onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null
-    onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null
-}
-
-interface SpeechRecognitionEvent extends Event {
-    results: SpeechRecognitionResultList
-    resultIndex: number
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-    error: string
-    message: string
-}
-
-interface SpeechRecognitionResultList {
-    readonly length: number
-    item(index: number): SpeechRecognitionResult
-    [index: number]: SpeechRecognitionResult
-}
-
-interface SpeechRecognitionResult {
-    readonly length: number
-    item(index: number): SpeechRecognitionAlternative
-    [index: number]: SpeechRecognitionAlternative
-    isFinal: boolean
-}
-
-interface SpeechRecognitionAlternative {
-    transcript: string
-    confidence: number
-}
-
-declare var SpeechRecognition: {
-    prototype: SpeechRecognition
-    new(): SpeechRecognition
-}
-
-interface Message {
-    id: string
-    role: 'user' | 'assistant'
-    content: string
-    thinking?: string
-    timestamp: Date
-    expandedFiles?: boolean
-}
-
-interface Conversation {
-    id: string
-    title: string
-    messages: Message[]
-    createdAt: Date
-    updatedAt: Date
-}
+import { Header } from './components/Header'
+import { useChatStreaming } from './hooks/useChatStreaming'
+import { useConversations } from './hooks/useConversations'
+import type { Message } from './hooks/useConversations'
+import { useSpeech } from './hooks/useSpeech'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useOutsideClickClosePanels } from './hooks/useOutsideClickClosePanels'
+import { useMobileView } from './hooks/useMobileView'
+import { useAutoScroll } from './hooks/useAutoScroll'
+import { useApplyThemeClasses, usePrefersColorSchemeSync } from './hooks/useThemeEffects'
+import { ProviderSettings } from './components/ProviderSettings'
 
 interface ChatSettings {
+    type?: string
     model: string
     temperature: number
     maxTokens: number
@@ -81,144 +23,230 @@ interface ChatSettings {
     apiKey: string
     topP: number
     topK: number
-    systemPrompt: string
+    showTokenStats: boolean
 }
 
+const AVAILABLE_PROVIDERS = [
+    {
+        name: 'Ollama',
+        type: 'ollama',
+        baseUrl: 'http://127.0.0.1:11434',
+        description: '本地運行的大模型服務，無需 API Key',
+        requiresApiKey: false
+    },
+    {
+        name: 'OpenAI',
+        type: 'openai',
+        baseUrl: 'https://api.openai.com',
+        description: 'OpenAI 雲端服務，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'DeepSeek',
+        type: 'deepseek',
+        baseUrl: 'https://api.deepseek.com',
+        description: 'DeepSeek 雲端服務，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Groq',
+        type: 'groq',
+        baseUrl: 'https://api.groq.com/openai',
+        description: 'Groq 高速推論服務，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Custom (OpenAI 格式)',
+        type: 'custom',
+        baseUrl: '',
+        description: '任何支援 OpenAI 規格的 API 終端',
+        requiresApiKey: true
+    }
+]
+
 const App: React.FC = () => {
-    // 創建初始對話
-    const createInitialConversation = (): Conversation => ({
-        id: Date.now().toString(),
-        title: `對話 1`,
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
+    const { t, i18n } = useTranslation()
+
+    // 純前端訪客使用者與 Token 模擬
+    const user = { email: 'guest@llmchat-ui.local', role: 'user', id: 'guest' }
+    const token = 'guest-token'
+    const authLoading = false
+    const authError = null
+
+    const logout = () => {
+        const confirmed = window.confirm("確定要清除所有對話與設定嗎？此動作將重置整個應用程式。")
+        if (confirmed) {
+            localStorage.clear()
+            window.location.reload()
+        }
+    }
+
+    const { isStreaming, streamingMessage, streamingThinking, stopRequested, stopConfirmText, tokenCount, tokensPerSecond, requestStop, streamChat } = useChatStreaming()
+
+    const {
+        conversations,
+        conversationsLoaded,
+        currentConversationId,
+        setCurrentConversationId,
+        createConversation,
+        createNewConversation: createNewConversationInternal,
+        addConversation,
+        removeConversation,
+        updateConversationTitle,
+        clearConversationMessages,
+        appendMessage,
+        deleteMessage
+    } = useConversations({
+        getDefaultConversationTitle: (index: number) => `${t('conversation.defaultTitle')} ${index}`
     })
 
-    // 初始化對話列表
-    const initialConversations = (() => {
-        try {
-            const saved = localStorage.getItem('conversations')
-            if (saved) {
-                const parsed = JSON.parse(saved)
-                // 確保Date對象正確解析
-                const parsedConversations = parsed.map((conv: any) => ({
-                    ...conv,
-                    createdAt: new Date(conv.createdAt),
-                    updatedAt: new Date(conv.updatedAt),
-                    messages: conv.messages.map((msg: any) => ({
-                        ...msg,
-                        timestamp: new Date(msg.timestamp)
-                    }))
-                }))
-                if (parsedConversations.length > 0) {
-                    return parsedConversations
-                }
-            }
-            return [createInitialConversation()]
-        } catch (error) {
-            console.error('Error loading conversations from localStorage:', error)
-            return [createInitialConversation()]
-        }
-    })()
-
-    const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
-
-    const [currentConversationId, setCurrentConversationId] = useState<string>(() => {
-        try {
-            const saved = localStorage.getItem('currentConversationId')
-            if (saved && initialConversations.some((c: Conversation) => c.id === saved)) {
-                return saved
-            }
-            return initialConversations[0].id
-        } catch (error) {
-            console.error('Error loading currentConversationId from localStorage:', error)
-            return initialConversations[0].id
-        }
-    })
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+
+    const {
+        isRecording,
+        startVoiceInput,
+        isSpeaking,
+        speechQueue,
+        globalSpeakingMessageId,
+        currentPlayingItemRef,
+        toggleSpeechForMessage,
+        getSpeechButtonState,
+        isSpeechButtonDisabled
+    } = useSpeech({
+        userId: user?.id,
+        language: i18n.language,
+        onTranscript: (text: string) => setInput(prev => prev + text),
+        unsupportedVoiceInputText: t('input.voice.unsupported'),
+        unsupportedVoiceText: t('messages.voice.unsupported')
+    })
+
+    const inputTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const setInputDebounced = useCallback((value: string) => {
+        setInput(value)
+
+        if (inputTimeoutRef.current) {
+            clearTimeout(inputTimeoutRef.current)
+        }
+
+        inputTimeoutRef.current = setTimeout(() => {
+            if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto'
+                textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
+            }
+        }, 100)
+    }, [])
+
     const [showSettings, setShowSettings] = useState(false)
+    const [showModelOnly, setShowModelOnly] = useState(false)
     const [showConversations, setShowConversations] = useState(false)
+    const [showProviderSettingsModal, setShowProviderSettingsModal] = useState(false)
+
     const [isDarkMode, setIsDarkMode] = useState(() => {
         try {
             const saved = localStorage.getItem('theme')
-            return saved ? JSON.parse(saved) : false
+            if (saved === 'dark') return true
+            if (saved === 'light') return false
+            return window.matchMedia('(prefers-color-scheme: dark)').matches
         } catch (error) {
             console.error('Error loading theme from localStorage:', error)
-            return false
+            return window.matchMedia('(prefers-color-scheme: dark)').matches
         }
     })
+
     const [availableModels, setAvailableModels] = useState<Array<{ id: string; name: string }>>([])
     const [isLoadingModels, setIsLoadingModels] = useState(true)
-    const [modelsError, setModelsError] = useState<string | null>(null)
-    const [settings, setSettings] = useState<ChatSettings>({
-        model: '',
-        temperature: 0.7,
-        maxTokens: 8192,
-        apiUrl: '',
-        apiKey: '',
-        topP: 0.9,
-        topK: 40,
-        systemPrompt: '你是一個有用的AI助手，請用繁體中文回答用戶的問題。'
+
+    const [settings, setSettings] = useState<ChatSettings>(() => {
+        const adminSettings = localStorage.getItem('adminProviderSettings')
+        if (adminSettings) {
+            try {
+                const parsed = JSON.parse(adminSettings)
+                return {
+                    type: parsed.type || 'ollama',
+                    model: parsed.model || '',
+                    temperature: parsed.temperature || 0.7,
+                    maxTokens: parsed.maxTokens || 8192,
+                    apiUrl: parsed.baseUrl || 'http://127.0.0.1:11434',
+                    apiKey: parsed.apiKey || '',
+                    topP: parsed.topP || 0.9,
+                    topK: parsed.topK || 40,
+                    showTokenStats: true
+                }
+            } catch (e) {
+                console.error('解析 adminSettings 失敗:', e)
+            }
+        }
+        return {
+            type: import.meta.env.VITE_DEFAULT_PROVIDER_TYPE || 'ollama',
+            model: import.meta.env.VITE_DEFAULT_MODEL || '',
+            temperature: 0.7,
+            maxTokens: 8192,
+            apiUrl: import.meta.env.VITE_OLLAMA_API_URL || 'http://127.0.0.1:11434',
+            apiKey: import.meta.env.VITE_DEFAULT_API_KEY || '',
+            topP: 0.9,
+            topK: 40,
+            showTokenStats: true
+        }
     })
+
+    const [userSettings, setUserSettings] = useState(() => {
+        const savedTheme = localStorage.getItem('theme')
+        return {
+            type: 'ollama',
+            language: 'zh-TW',
+            theme: (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'auto')
+                ? savedTheme
+                : 'auto',
+            model: '',
+            temperature: 0.7,
+            maxTokens: 8192,
+            apiUrl: '',
+            apiKey: '',
+            topP: 0.9,
+            topK: 40,
+            showTokenStats: true
+        }
+    })
+
     const [attachedFiles, setAttachedFiles] = useState<File[]>([])
-    const [isRecording, setIsRecording] = useState(false)
-    const [isSpeaking, setIsSpeaking] = useState(false)
-    const [isStreaming, setIsStreaming] = useState(false)
-    // 永遠啟用串流模式
-    const streamingModeEnabled = true
-    const [streamingMessage, setStreamingMessage] = useState('')
-    const [streamingThinking, setStreamingThinking] = useState('')
+    const [isFullscreen, setIsFullscreen] = useState(false)
     const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set())
     const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set())
     const [showStreamingThinking, setShowStreamingThinking] = useState(false)
-    const [expandedStreamingThinking, setExpandedStreamingThinking] = useState(false)
+
+    const isMobileView = useMobileView(768)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const recognitionRef = useRef<SpeechRecognition | null>(null)
-    const synthRef = useRef<SpeechSynthesis | null>(null)
     const messagesContainerRef = useRef<HTMLDivElement>(null)
-    const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
 
-    // 當前對話的消息
     const currentMessages = conversations.find(c => c.id === currentConversationId)?.messages || []
 
-    const scrollToBottom = () => {
-        if (shouldAutoScroll) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-        }
-    }
+    const { shouldAutoScroll, setShouldAutoScroll, scrollToBottom } = useAutoScroll({
+        isStreaming,
+        messagesEndRef,
+        messagesContainerRef,
+        currentMessages,
+        streamingMessage
+    })
 
-    // 檢查用戶是否在底部附近
-    const isNearBottom = () => {
-        const container = messagesContainerRef.current
-        if (!container) return true
-
-        const threshold = 100 // 距離底部100px內算作底部
-        return container.scrollHeight - container.scrollTop - container.clientHeight < threshold
-    }
-
-    // 處理滾動事件
-    const handleScroll = () => {
-        if (isNearBottom()) {
-            setShouldAutoScroll(true)
-        } else {
-            setShouldAutoScroll(false)
-        }
-    }
-
-    // 切換主題函數
     const toggleTheme = () => {
-        const newTheme = !isDarkMode
-        setIsDarkMode(newTheme)
-        localStorage.setItem('theme', JSON.stringify(newTheme))
-        // 更新 body 類別以應用玻璃擬態主題
-        document.body.classList.toggle('dark-theme', newTheme)
+        const order: Array<'light' | 'dark' | 'auto'> = ['light', 'dark', 'auto']
+        const current = userSettings.theme as 'light' | 'dark' | 'auto'
+        const next = order[(order.indexOf(current) + 1) % 3]
+        const newIsDark = next === 'dark' ? true : next === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false
+        setIsDarkMode(newIsDark)
+        updateAndSaveSettings('theme', next)
     }
 
+    const toggleFullscreen = () => {
+        const newFullscreen = !isFullscreen
+        setIsFullscreen(newFullscreen)
+        document.body.classList.toggle('fullscreen-mode', newFullscreen)
+    }
 
-    // 切換thinking展開狀態
     const toggleThinking = (messageId: string) => {
         setExpandedThinking(prev => {
             const newSet = new Set(prev)
@@ -226,12 +254,12 @@ const App: React.FC = () => {
                 newSet.delete(messageId)
             } else {
                 newSet.add(messageId)
+                setTimeout(() => scrollToBottom(), 100)
             }
             return newSet
         })
     }
 
-    // 切換檔案展開狀態
     const toggleFiles = (messageId: string) => {
         setExpandedFiles(prev => {
             const newSet = new Set(prev)
@@ -244,283 +272,397 @@ const App: React.FC = () => {
         })
     }
 
-    // 載入預設配置
     const loadDefaultConfig = async () => {
-        // 純前端版本，從環境變數讀取預設配置
-        const defaultApiUrl = import.meta.env.VITE_OLLAMA_API_URL || 'http://localhost:11434'
-        const defaultApiKey = import.meta.env.VITE_OLLAMA_API_KEY || ''
-
-        // 直接設定新的狀態值，而不是合併
-        const newSettings = {
-            ...settings,
-            apiUrl: defaultApiUrl,
-            apiKey: defaultApiKey
+        if (!localStorage.getItem('adminProviderSettings')) {
+            const defaultSettings = {
+                type: import.meta.env.VITE_DEFAULT_PROVIDER_TYPE || 'ollama',
+                baseUrl: import.meta.env.VITE_OLLAMA_API_URL || 'http://localhost:11434',
+                apiKey: import.meta.env.VITE_DEFAULT_API_KEY || '',
+                model: import.meta.env.VITE_DEFAULT_MODEL || '',
+                temperature: 0.7,
+                maxTokens: 8192,
+                topP: 0.9,
+                topK: 40,
+                showTokenStats: true
+            }
+            localStorage.setItem('adminProviderSettings', JSON.stringify(defaultSettings))
         }
-
-        setSettings(newSettings)
-
-        // 立即使用新的 API URL 載入模型
-        await loadAvailableModels(defaultApiUrl)
     }
 
-    // 載入可用模型列表 - 直接調用 Ollama API
-    const loadAvailableModels = async (customApiUrl?: string) => {
+    const loadAvailableModels = async (currentModelOverride?: string) => {
         try {
             setIsLoadingModels(true)
-            const apiUrl = customApiUrl || settings.apiUrl || 'http://localhost:11434'
-            console.log('Loading models from:', apiUrl)
+            const effectiveModel = currentModelOverride !== undefined ? currentModelOverride : settings.model
 
-            const response = await fetch(`${apiUrl}/api/tags`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
+            const adminSettings = localStorage.getItem('adminProviderSettings')
+            let apiUrl = 'http://127.0.0.1:11434'
+            let apiKey = ''
+            let providerType = 'ollama'
 
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Unknown error')
-                throw new Error(`HTTP ${response.status}: ${errorText}`)
+            if (adminSettings) {
+                try {
+                    const parsed = JSON.parse(adminSettings)
+                    apiUrl = parsed.baseUrl || 'http://127.0.0.1:11434'
+                    apiKey = parsed.apiKey || ''
+                    providerType = parsed.type || 'ollama'
+                } catch (e) {}
+            } else {
+                apiUrl = settings.apiUrl || 'http://127.0.0.1:11434'
+                apiKey = settings.apiKey || ''
+                providerType = settings.type || 'ollama'
             }
 
-            const data = await response.json()
-            console.log('Models data received:', data)
+            console.log('載入模型列表 - type:', providerType, 'apiUrl:', apiUrl)
 
-            if (!data.models || !Array.isArray(data.models)) {
-                throw new Error('Invalid response format: models array not found')
+            let models: Array<{ id: string; name: string }> = []
+
+            try {
+                if (providerType === 'ollama') {
+                    const response = await fetch(`${apiUrl}/api/tags`)
+                    if (response.ok) {
+                        const data = await response.json()
+                        models = (data.models || []).map((m: any) => ({
+                            id: m.name,
+                            name: m.name
+                        }))
+                    } else {
+                        throw new Error(`Ollama returned status ${response.status}`)
+                    }
+                } else {
+                    const headers: Record<string, string> = {
+                        'Content-Type': 'application/json'
+                    }
+                    if (apiKey) {
+                        headers['Authorization'] = `Bearer ${apiKey}`
+                    }
+                    const response = await fetch(`${apiUrl}/v1/models`, {
+                        method: 'GET',
+                        headers
+                    })
+                    if (response.ok) {
+                        const data = await response.json()
+                        models = (data.data || []).map((m: any) => ({
+                            id: m.id,
+                            name: m.id
+                        }))
+                    } else {
+                        throw new Error(`Provider returned status ${response.status}`)
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to fetch models from API, using fallback list:', error)
+                if (providerType === 'openai') {
+                    models = [
+                        { id: 'gpt-4o', name: 'gpt-4o' },
+                        { id: 'gpt-4o-mini', name: 'gpt-4o-mini' },
+                        { id: 'gpt-4-turbo', name: 'gpt-4-turbo' },
+                        { id: 'o1-mini', name: 'o1-mini' }
+                    ]
+                } else if (providerType === 'deepseek') {
+                    models = [
+                        { id: 'deepseek-chat', name: 'deepseek-chat' },
+                        { id: 'deepseek-reasoner', name: 'deepseek-reasoner' }
+                    ]
+                } else if (providerType === 'groq') {
+                    models = [
+                        { id: 'llama3-70b-8192', name: 'llama-3.1-70b' },
+                        { id: 'llama3-8b-8192', name: 'llama-3.1-8b' },
+                        { id: 'mixtral-8x7b-32768', name: 'mixtral-8x7b' }
+                    ]
+                } else {
+                    models = []
+                }
             }
 
-            const models = data.models.map((model: any) => ({
-                id: model.name,
-                name: model.name
-            }))
+            if (effectiveModel && !models.some(m => m.id === effectiveModel)) {
+                models.unshift({ id: effectiveModel, name: effectiveModel })
+            }
 
-            console.log('Parsed models:', models)
             setAvailableModels(models)
-            setModelsError(null) // 清除錯誤訊息
 
-            // 如果有模型且當前模型為空，使用第一個
-            if (models.length > 0 && !settings.model) {
-                setSettings(prev => ({ ...prev, model: models[0].id }))
+            if (models.length > 0) {
+                const isCurrentModelValid = models.some((m: any) => m.id === effectiveModel)
+                if (!effectiveModel || !isCurrentModelValid) {
+                    const fallbackModel = models[0].id
+                    setSettings(prev => ({ ...prev, model: fallbackModel }))
+                    setUserSettings(prev => ({ ...prev, model: fallbackModel }))
+                    try {
+                        const existing = localStorage.getItem('adminProviderSettings')
+                        if (existing) {
+                            const parsed = JSON.parse(existing)
+                            parsed.model = fallbackModel
+                            localStorage.setItem('adminProviderSettings', JSON.stringify(parsed))
+                        }
+                    } catch (e) {}
+                } else if (effectiveModel !== settings.model) {
+                    setSettings(prev => ({ ...prev, model: effectiveModel }))
+                    setUserSettings(prev => ({ ...prev, model: effectiveModel }))
+                }
+            } else {
+                setSettings(prev => ({ ...prev, model: '' }))
+                setUserSettings(prev => ({ ...prev, model: '' }))
             }
         } catch (error) {
             console.error('Error loading models:', error)
-            setAvailableModels([]) // 清空模型列表
-
-            // 設定錯誤訊息
-            let errorMessage = '載入模型失敗'
-            if (error instanceof TypeError && error.message.includes('fetch')) {
-                errorMessage = '網路連線錯誤，請檢查 Ollama 服務器是否運行'
-            } else if (error instanceof Error) {
-                if (error.message.includes('CORS')) {
-                    errorMessage = 'CORS 錯誤，請檢查服務器允許跨域請求'
-                } else if (error.message.includes('HTTP')) {
-                    errorMessage = `服務器錯誤: ${error.message}`
-                } else {
-                    errorMessage = `載入錯誤: ${error.message}`
-                }
-            }
-            setModelsError(errorMessage)
+            setAvailableModels([])
         } finally {
             setIsLoadingModels(false)
         }
     }
 
-    useEffect(() => {
-        scrollToBottom()
-    }, [currentMessages])
+    usePrefersColorSchemeSync({ setIsDarkMode })
+    useApplyThemeClasses({ isDarkMode })
 
-    // 當流式消息更新時也滾動到底部
-    useEffect(() => {
-        scrollToBottom()
-    }, [streamingMessage])
+    const loadUserSettings = async () => {
+        try {
+            await loadDefaultConfig()
 
-    // 添加滾動事件監聽器
-    useEffect(() => {
-        const container = messagesContainerRef.current
-        if (container) {
-            container.addEventListener('scroll', handleScroll)
-            return () => container.removeEventListener('scroll', handleScroll)
+            const adminSettings = localStorage.getItem('adminProviderSettings')
+            let providerConfig = {
+                type: 'ollama',
+                apiUrl: 'http://localhost:11434',
+                apiKey: '',
+                model: '',
+                temperature: 0.7,
+                maxTokens: 8192,
+                topP: 0.9,
+                topK: 40,
+                showTokenStats: true
+            }
+
+            if (adminSettings) {
+                try {
+                    const parsed = JSON.parse(adminSettings)
+                    providerConfig = {
+                        ...providerConfig,
+                        type: parsed.type || 'ollama',
+                        apiUrl: parsed.baseUrl || 'http://localhost:11434',
+                        apiKey: parsed.apiKey || '',
+                        model: parsed.model || '',
+                        temperature: parsed.temperature || 0.7,
+                        maxTokens: parsed.maxTokens || 8192,
+                    }
+                } catch (e) {
+                    console.error('解析 adminSettings 失敗:', e)
+                }
+            }
+
+            const savedPrefs = localStorage.getItem('llmchat_settings')
+            let userPrefs = {
+                language: 'zh-TW',
+                theme: 'auto',
+                showTokenStats: true
+            }
+            if (savedPrefs) {
+                try {
+                    userPrefs = { ...userPrefs, ...JSON.parse(savedPrefs) }
+                } catch (e) {}
+            }
+
+            const mergedSettings = {
+                ...providerConfig,
+                ...userPrefs
+            }
+
+            setUserSettings(mergedSettings)
+            setSettings(mergedSettings)
+
+            if (mergedSettings.language) {
+                await i18n.changeLanguage(mergedSettings.language)
+                const htmlElement = document.getElementById('html-root') as HTMLHtmlElement
+                if (htmlElement) {
+                    htmlElement.lang = mergedSettings.language
+                }
+            }
+
+            const localTheme = mergedSettings.theme
+            if (localTheme) {
+                if (localTheme === 'auto') {
+                    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+                    setIsDarkMode(mediaQuery.matches)
+                } else {
+                    setIsDarkMode(localTheme === 'dark')
+                }
+            }
+
+            setTimeout(() => {
+                loadAvailableModels(mergedSettings.model)
+            }, 100)
+        } catch (error) {
+            console.error('Error loading user settings:', error)
         }
-    }, [shouldAutoScroll])
-
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto'
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
-        }
-    }, [input])
-
-    // 初始化主題類別
-    useEffect(() => {
-        document.body.classList.toggle('dark-theme', isDarkMode)
-    }, [isDarkMode])
-
-    // 保存對話到本地存儲
-    useEffect(() => {
-        localStorage.setItem('conversations', JSON.stringify(conversations))
-    }, [conversations])
-
-    useEffect(() => {
-        localStorage.setItem('currentConversationId', currentConversationId)
-    }, [currentConversationId])
-
-    // 創建新對話
-    const createNewConversation = () => {
-        const newConversation: Conversation = {
-            id: Date.now().toString(),
-            title: `對話 ${conversations.length + 1}`,
-            messages: [],
-            createdAt: new Date(),
-            updatedAt: new Date()
-        }
-        setConversations(prev => [...prev, newConversation])
-        setCurrentConversationId(newConversation.id)
     }
 
-    // 切換對話
+    const saveUserSettingsToServer = async (settingsToSave: any) => {
+        try {
+            const saved = localStorage.getItem('llmchat_settings')
+            let current = saved ? JSON.parse(saved) : {}
+            const updated = { ...current, ...settingsToSave }
+            localStorage.setItem('llmchat_settings', JSON.stringify(updated))
+            
+            setUserSettings(prev => ({ ...prev, ...settingsToSave }))
+            setSettings(prev => ({ ...prev, ...settingsToSave }))
+        } catch (error) {
+            console.error('Error saving settings:', error)
+        }
+    }
+
+    const updateAndSaveSettings = async (key: string, value: any) => {
+        const nextSettings = { ...userSettings, [key]: value }
+        
+        setUserSettings(nextSettings)
+        setSettings(prev => ({ ...prev, [key]: value }))
+        
+        if (key === 'theme') {
+            localStorage.setItem('theme', value)
+        }
+        if (key === 'language') {
+            try { localStorage.setItem('llmchat_language', value) } catch {}
+        }
+        
+        await saveUserSettingsToServer({ [key]: value })
+        return nextSettings
+    }
+
+    const handleSaveProviderSettings = async (providerData: {
+        type: string
+        baseUrl: string
+        apiKey: string
+        model: string
+        temperature: number
+        maxTokens: number
+    }) => {
+        localStorage.setItem('adminProviderSettings', JSON.stringify({
+            type: providerData.type,
+            baseUrl: providerData.baseUrl,
+            apiKey: providerData.apiKey,
+            model: providerData.model,
+            temperature: providerData.temperature,
+            maxTokens: providerData.maxTokens
+        }))
+
+        setSettings(prev => ({
+            ...prev,
+            type: providerData.type,
+            apiUrl: providerData.baseUrl,
+            apiKey: providerData.apiKey,
+            model: providerData.model,
+            temperature: providerData.temperature,
+            maxTokens: providerData.maxTokens
+        }))
+
+        setUserSettings(prev => ({
+            ...prev,
+            type: providerData.type,
+            apiUrl: providerData.baseUrl,
+            apiKey: providerData.apiKey,
+            model: providerData.model,
+            temperature: providerData.temperature,
+            maxTokens: providerData.maxTokens
+        }))
+
+        setTimeout(() => {
+            loadAvailableModels(providerData.model)
+        }, 100)
+    }
+
+    useEffect(() => {
+        loadUserSettings()
+
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'adminProviderSettings') {
+                console.log('Provider settings updated, reloading models...')
+                setTimeout(() => {
+                    loadAvailableModels()
+                }, 100)
+            }
+        }
+
+        window.addEventListener('storage', handleStorageChange)
+        return () => {
+            window.removeEventListener('storage', handleStorageChange)
+        }
+    }, [])
+
+    const createNewConversation = () => {
+        createNewConversationInternal()
+        setShouldAutoScroll(true)
+    }
+
     const switchConversation = (conversationId: string) => {
         setCurrentConversationId(conversationId)
         setShowConversations(false)
     }
 
-    // 刪除對話
     const deleteConversation = (conversationId: string) => {
         const conversation = conversations.find(c => c.id === conversationId)
         if (!conversation) return
 
-        const confirmed = window.confirm(`確定要刪除對話「${conversation.title}」嗎？此操作無法復原。`)
+        const confirmed = window.confirm(t('conversation.delete.confirm', { title: conversation.title }))
         if (!confirmed) return
 
-        setConversations(prev => prev.filter(c => c.id !== conversationId))
-        if (currentConversationId === conversationId) {
-            const remaining = conversations.filter(c => c.id !== conversationId)
-            setCurrentConversationId(remaining.length > 0 ? remaining[0].id : '')
+        if (conversationId === currentConversationId && isStreaming) {
+            requestStop(true)
         }
+
+        removeConversation(conversationId)
     }
 
-    // 更新對話標題
-    const updateConversationTitle = (conversationId: string, title: string) => {
-        setConversations(prev => prev.map(c =>
-            c.id === conversationId ? { ...c, title, updatedAt: new Date() } : c
-        ))
+    const handleDeleteMessage = (conversationId: string, messageId: string) => {
+        const conversation = conversations.find(c => c.id === conversationId)
+        if (!conversation) return
+
+        const message = conversation.messages.find(m => m.id === messageId)
+        if (!message) return
+
+        const confirmed = window.confirm(t('messages.delete.confirm'))
+        if (!confirmed) return
+
+        deleteMessage(conversationId, messageId)
     }
 
-    // 處理檔案選擇
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files || [])
         const validFiles = files.filter(file => {
-            // 限制檔案大小 (10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                alert(`檔案 ${file.name} 太大，請選擇小於 10MB 的檔案`)
+            if (file.size > 50 * 1024 * 1024) {
+                alert(t('input.files.sizeError', { name: file.name }))
                 return false
             }
-            // 限制檔案類型
             const allowedTypes = ['image/', 'text/', 'application/pdf', 'application/json']
             if (!allowedTypes.some(type => file.type.startsWith(type))) {
-                alert(`檔案類型 ${file.type} 不支援`)
+                alert(t('input.files.typeError', { type: file.type }))
                 return false
             }
             return true
         })
         setAttachedFiles(prev => [...prev, ...validFiles])
-        // 重置 input
         if (fileInputRef.current) {
             fileInputRef.current.value = ''
         }
     }
 
-    // 移除附加檔案
     const removeFile = (index: number) => {
         setAttachedFiles(prev => prev.filter((_, i) => i !== index))
     }
 
-    // 讀取檔案內容
     const readFileContent = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => resolve(reader.result as string)
-            reader.onerror = () => reject(reader.error)
-            reader.readAsText(file)
+            if (file.type === 'application/pdf') {
+                resolve(`[PDF檔案: ${file.name}]\n${t('input.files.pdfNote')}`)
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result as string)
+                reader.onerror = () => reject(reader.error)
+                reader.readAsDataURL(file)
+            } else {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result as string)
+                reader.onerror = () => reject(reader.error)
+                reader.readAsText(file)
+            }
         })
     }
 
-    // 初始化語音識別
-    const initSpeechRecognition = () => {
-        if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
-            alert('您的瀏覽器不支援語音識別功能')
-            return null
-        }
-
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-        const recognition = new SpeechRecognition()
-
-        recognition.continuous = false
-        recognition.interimResults = false
-        recognition.lang = 'zh-TW'
-
-        recognition.onstart = () => {
-            setIsRecording(true)
-        }
-
-        recognition.onend = () => {
-            setIsRecording(false)
-        }
-
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript
-            setInput(prev => prev + transcript)
-        }
-
-        recognition.onerror = (event) => {
-            console.error('語音識別錯誤:', event.error)
-            setIsRecording(false)
-        }
-
-        return recognition
-    }
-
-    // 開始語音輸入
-    const startVoiceInput = () => {
-        if (isRecording) {
-            recognitionRef.current?.stop()
-            return
-        }
-
-        if (!recognitionRef.current) {
-            recognitionRef.current = initSpeechRecognition()
-        }
-
-        if (recognitionRef.current) {
-            recognitionRef.current.start()
-        }
-    }
-
-    // 語音輸出
-    const speakText = (text: string) => {
-        if (!('speechSynthesis' in window)) {
-            alert('您的瀏覽器不支援語音合成功能')
-            return
-        }
-
-        if (isSpeaking) {
-            window.speechSynthesis.cancel()
-            setIsSpeaking(false)
-            return
-        }
-
-        const utterance = new SpeechSynthesisUtterance(text)
-        utterance.lang = 'zh-TW'
-        utterance.rate = 1
-        utterance.pitch = 1
-
-        utterance.onstart = () => setIsSpeaking(true)
-        utterance.onend = () => setIsSpeaking(false)
-        utterance.onerror = () => setIsSpeaking(false)
-
-        window.speechSynthesis.speak(utterance)
-    }
-
-    // 導出對話記錄
     const exportConversation = (format: 'json' | 'markdown' = 'json') => {
         if (!currentConversationId) return
 
@@ -537,14 +679,17 @@ const App: React.FC = () => {
             mimeType = 'application/json'
         } else if (format === 'markdown') {
             content = `# ${conversation.title}\n\n`
-            content += `創建時間: ${conversation.createdAt.toLocaleString('zh-TW')}\n`
-            content += `最後更新: ${conversation.updatedAt.toLocaleString('zh-TW')}\n\n`
+            content += `${t('conversation.export.created')}: ${conversation.createdAt.toLocaleString(i18n.language)}\n`
+            content += `${t('conversation.export.updated')}: ${conversation.updatedAt.toLocaleString(i18n.language)}\n\n`
             content += `---\n\n`
 
             conversation.messages.forEach((message, index) => {
-                const role = message.role === 'user' ? '用戶' : '助手'
-                content += `## ${role} (${message.timestamp.toLocaleString('zh-TW')})\n\n`
+                const role = message.role === 'user' ? t('messages.user') : t('messages.assistant')
+                content += `## ${role} (${message.timestamp.toLocaleString(i18n.language)})\n\n`
                 content += `${message.content}\n\n`
+                if (message.role === 'assistant' && message.thinking) {
+                    content += `**${t('messages.thinking')}：**\n\n${message.thinking}\n\n`
+                }
                 if (index < conversation.messages.length - 1) {
                     content += `---\n\n`
                 }
@@ -565,304 +710,166 @@ const App: React.FC = () => {
         URL.revokeObjectURL(url)
     }
 
-    // 流式發送消息
     const sendStreamingMessage = async () => {
         if ((!input.trim() && attachedFiles.length === 0) || isLoading) return
 
-        // 處理附加檔案
         let messageContent = input.trim()
         if (attachedFiles.length > 0) {
             messageContent = messageContent + '\n\n[附加檔案: ' + attachedFiles.map(f => f.name).join(', ') + ']'
+        }
+
+        let hiddenContent = messageContent
+        const images: string[] = []
+        if (attachedFiles.length > 0) {
+            try {
+                const fileContents = await Promise.all(attachedFiles.map(async file => {
+                    const content = await readFileContent(file)
+                    if (file.type.startsWith('image/')) {
+                        images.push(content)
+                        return `--- Image: ${file.name} (Base64) ---`
+                    }
+                    return `--- File: ${file.name} ---\n${content}\n--- End of File ---`
+                }))
+                hiddenContent = messageContent + '\n\n' + fileContents.join('\n\n')
+            } catch (error) {
+                console.error('Error reading attached files:', error)
+            }
         }
 
         const userMessage: Message = {
             id: Date.now().toString(),
             role: 'user',
             content: messageContent,
+            hiddenContent: hiddenContent !== messageContent ? hiddenContent : undefined,
             timestamp: new Date()
         }
 
-        // 如果沒有當前對話，創建一個新的並包含用戶消息
         let conversationId = currentConversationId
         if (!conversationId) {
-            const newConversation: Conversation = {
-                id: Date.now().toString(),
+            const newConversation = createConversation({
                 title: `對話 ${conversations.length + 1}`,
-                messages: [userMessage],
-                createdAt: new Date(),
-                updatedAt: new Date()
-            }
-            setConversations(prev => [...prev, newConversation])
-            setCurrentConversationId(newConversation.id)
+                messages: [userMessage]
+            })
+            addConversation(newConversation, true)
             conversationId = newConversation.id
         } else {
-            // 更新現有對話消息
-            setConversations(prev => prev.map(c =>
-                c.id === conversationId
-                    ? { ...c, messages: [...c.messages, userMessage], updatedAt: new Date() }
-                    : c
-            ))
+            appendMessage(conversationId, userMessage)
         }
 
         setInput('')
-        setAttachedFiles([]) // 清除附加檔案
+        setAttachedFiles([])
         setIsLoading(true)
-        setStreamingMessage('')
-        setStreamingThinking('')
-        setExpandedStreamingThinking(false) // 重置展開狀態
 
         try {
-            const currentConversation = conversations.find(c => c.id === conversationId)
-            const apiUrl = settings.apiUrl || 'http://localhost:11434'
+            const baseConversation = conversations.find(c => c.id === conversationId)
+            const historyMessages = [...(baseConversation?.messages || []), userMessage]
 
-            // 構建完整的對話歷史
-            const messages = []
+            let finalSettings = settings
+            const hasImage = images.length > 0
+            try {
+                const adminSettings = localStorage.getItem('adminProviderSettings')
+                if (adminSettings) {
+                    const parsed = JSON.parse(adminSettings)
+                    const selectedModel = (hasImage && parsed.visionModel) 
+                        ? parsed.visionModel 
+                        : (parsed.model || settings.model)
 
-            // 添加系統提示
-            if (settings.systemPrompt) {
-                messages.push({
-                    role: 'system',
-                    content: settings.systemPrompt
-                })
-            }
-
-            // 添加歷史對話（排除當前用戶消息）
-            const historyMessages = currentConversation?.messages || []
-            historyMessages.forEach(msg => {
-                messages.push({
-                    role: msg.role,
-                    content: msg.content
-                })
-            })
-
-            // 添加當前用戶消息
-            messages.push({
-                role: 'user',
-                content: userMessage.content
-            })
-
-            const response = await fetch(`${apiUrl}/api/chat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: settings.model,
-                    messages: messages,
-                    stream: true,
-                    options: {
-                        temperature: parseFloat(settings.temperature.toString()),
-                        num_predict: parseInt(settings.maxTokens.toString()),
-                        num_ctx: parseInt(settings.maxTokens.toString()),
-                        top_p: parseFloat(settings.topP.toString()),
-                        top_k: parseInt(settings.topK.toString()),
-                        repeat_penalty: 1.1
+                    finalSettings = {
+                        ...settings,
+                        type: parsed.type || settings.type,
+                        model: selectedModel,
+                        apiUrl: parsed.baseUrl || settings.apiUrl,
+                        apiKey: parsed.apiKey || settings.apiKey
                     }
-                }),
-            })
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`)
-            }
-
-            const reader = response.body?.getReader()
-            const decoder = new TextDecoder()
-
-            if (reader) {
-                try {
-                    while (true) {
-                        const { done, value } = await reader.read()
-                        if (done) {
-                            console.log('Stream reader done')
-                            break
-                        }
-
-                        const chunk = decoder.decode(value, { stream: true })
-                        console.log('Received chunk:', chunk)
-
-                        // 解析 Ollama 的 JSON Lines 格式
-                        const lines = chunk.split('\n').filter(line => line.trim())
-
-                        for (const line of lines) {
-                            try {
-                                const data = JSON.parse(line)
-                                console.log('Parsed stream data:', data)
-
-                                if (data.message?.content) {
-                                    setStreamingMessage((prev: string) => prev + data.message.content)
-                                } else if (data.message?.thinking) {
-                                    setStreamingThinking((prev: string) => prev + data.message.thinking)
-                                }
-
-                                if (data.done) {
-                                    console.log('Stream completed')
-                                    break
-                                }
-                            } catch (e) {
-                                console.error('Parse error:', e, 'Line:', line)
-                                // 忽略解析錯誤
-                            }
-                        }
-                    }
-
-                    // 獲取最終的串流消息內容和thinking
-                    const [finalContent, finalThinking] = await Promise.all([
-                        new Promise<string>((resolve) => {
-                            setStreamingMessage((current: string) => {
-                                resolve(current)
-                                return current
-                            })
-                        }),
-                        new Promise<string>((resolve) => {
-                            setStreamingThinking((current: string) => {
-                                resolve(current)
-                                return current
-                            })
-                        })
-                    ])
-
-                    console.log('Stream completed, final response:', finalContent, 'thinking:', finalThinking)
-                    // 流式回應完成
-                    const assistantMessage: Message = {
-                        id: (Date.now() + 1).toString(),
-                        role: 'assistant',
-                        content: finalContent,
-                        thinking: finalThinking || undefined,
-                        timestamp: new Date()
-                    }
-
-                    setConversations(prev => prev.map(c =>
-                        c.id === conversationId
-                            ? { ...c, messages: [...c.messages, assistantMessage], updatedAt: new Date() }
-                            : c
-                    ))
-
-                    // 更新對話標題（如果這是第一條消息）
-                    if (currentConversation && currentConversation.messages.length === 0) {
-                        const title = userMessage.content.length > 20
-                            ? userMessage.content.substring(0, 20) + '...'
-                            : userMessage.content
-                        updateConversationTitle(conversationId, title)
-                    }
-                } finally {
-                    reader.releaseLock()
                 }
+            } catch (e) {}
+
+            const result = await streamChat({
+                message: userMessage.hiddenContent || userMessage.content,
+                settings: finalSettings,
+                history: historyMessages.map(msg => ({
+                    role: msg.role,
+                    content: msg.hiddenContent || msg.content
+                })),
+                images: images.length > 0 ? images : undefined,
+                language: i18n.language
+            })
+
+            const assistantMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: result.wasInterrupted ? result.content + '\n\n**' + t('messages.interrupted') + '**' : result.content,
+                thinking: result.thinking || undefined,
+                timestamp: new Date(),
+                interrupted: result.wasInterrupted,
+                tokenCount: result.tokenCount,
+                tokensPerSecond: result.tokensPerSecond
+            }
+
+            appendMessage(conversationId, assistantMessage)
+
+            if (baseConversation && baseConversation.messages.length === 0) {
+                const title = userMessage.content.length > 20
+                    ? userMessage.content.substring(0, 20) + '...'
+                    : userMessage.content
+                updateConversationTitle(conversationId, title)
             }
         } catch (error) {
             console.error('Error sending streaming message:', error)
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: '抱歉，發生錯誤。請檢查後端服務是否正常運行。',
+                content: t('messages.error'),
                 timestamp: new Date()
             }
-            setConversations(prev => prev.map(c =>
-                c.id === conversationId
-                    ? { ...c, messages: [...c.messages, errorMessage], updatedAt: new Date() }
-                    : c
-            ))
+            appendMessage(conversationId, errorMessage)
         } finally {
             setIsLoading(false)
-            setIsStreaming(false)
-            setStreamingMessage('')
-            setStreamingThinking('')
-            // 發送完成後自動聚焦到輸入框
             setTimeout(() => {
                 textareaRef.current?.focus()
             }, 100)
         }
     }
 
-    // 組件掛載時載入預設配置和模型列表
-    useEffect(() => {
-        loadDefaultConfig()
-    }, [])
+    useKeyboardShortcuts({
+        showSettings,
+        showConversations,
+        setShowSettings,
+        setShowConversations,
+        onNewConversation: createNewConversation,
+        onClearChat: clearChat
+    })
 
-    // 當用戶在設定面板修改 API URL 時重新載入模型列表 (防抖)
+    useOutsideClickClosePanels({ showConversations, showSettings, setShowConversations, setShowSettings })
+
     useEffect(() => {
-        if (settings.apiUrl && settings.apiUrl !== 'http://localhost:11434') {
+        if (settings.apiUrl) {
             const timeoutId = setTimeout(() => {
                 loadAvailableModels()
-            }, 500) // 500ms 防抖
+            }, 500)
             return () => clearTimeout(timeoutId)
         }
     }, [settings.apiUrl])
 
-
-    // 鍵盤快捷鍵
     useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            // Ctrl/Cmd + I: 新對話
-            if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
-                event.preventDefault()
-                createNewConversation()
-            }
-            // Ctrl/Cmd + K: 清除對話
-            if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-                event.preventDefault()
-                clearChat()
-            }
-            // Ctrl/Cmd + ,: 開啟設定
-            if ((event.ctrlKey || event.metaKey) && event.key === ',') {
-                event.preventDefault()
-                setShowSettings(!showSettings)
-            }
-            // Ctrl/Cmd + B: 切換對話列表
-            if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
-                event.preventDefault()
-                setShowConversations(!showConversations)
-            }
-            // Escape: 關閉面板
-            if (event.key === 'Escape') {
-                if (showSettings) setShowSettings(false)
-                if (showConversations) setShowConversations(false)
+        return () => {
+            if (inputTimeoutRef.current) {
+                clearTimeout(inputTimeoutRef.current)
             }
         }
-
-        document.addEventListener('keydown', handleKeyDown)
-        return () => document.removeEventListener('keydown', handleKeyDown)
-    }, [showSettings, showConversations])
-
-    // 點擊外部關閉面板
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            // 關閉導出菜單
-            const menu = document.getElementById('export-menu')
-            const button = document.querySelector('[title="導出對話"]')
-            if (menu && button && !menu.contains(event.target as Node) && !button.contains(event.target as Node)) {
-                menu.classList.add('hidden')
-            }
-
-            // 關閉對話列表面板
-            const conversationsPanel = document.querySelector('[data-panel="conversations"]')
-            const conversationsButton = document.querySelector('[data-button="conversations"]')
-            if (showConversations && conversationsPanel && conversationsButton &&
-                !conversationsPanel.contains(event.target as Node) && !conversationsButton.contains(event.target as Node)) {
-                setShowConversations(false)
-            }
-
-            // 關閉設定面板 - 排除模型按鈕
-            const settingsPanel = document.querySelector('[data-panel="settings"]')
-            const settingsButton = document.querySelector('[data-button="settings"]')
-            const modelButton = document.querySelector('[title*="點擊"]') // 模型按鈕有動態title
-            if (showSettings && settingsPanel && settingsButton &&
-                !settingsPanel.contains(event.target as Node) && !settingsButton.contains(event.target as Node) &&
-                !modelButton?.contains(event.target as Node)) {
-                setShowSettings(false)
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [showConversations, showSettings])
-
+    }, [])
 
     const sendMessage = async () => {
-        console.log('Starting streaming message...')
-        setIsStreaming(true) // 立即設置串流狀態
         await sendStreamingMessage()
     }
 
+    const handleSendClick = () => {
+        if (isStreaming) {
+            requestStop()
+        } else {
+            sendMessage()
+        }
+    }
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -871,164 +878,79 @@ const App: React.FC = () => {
         }
     }
 
-    const clearChat = () => {
+    function clearChat() {
         if (currentConversationId) {
-            const confirmed = window.confirm('確定要清除當前對話的所有內容嗎？此操作無法復原。')
+            const confirmed = window.confirm(t('conversation.clear.confirm'))
             if (!confirmed) return
 
-            setConversations(prev => prev.map(c =>
-                c.id === currentConversationId
-                    ? { ...c, messages: [], updatedAt: new Date() }
-                    : c
-            ))
+            if (isStreaming) {
+                requestStop(true)
+            }
+
+            clearConversationMessages(currentConversationId)
         }
     }
 
-    return (
-        <div className="flex flex-col h-full transition-colors">
-            {/* Header */}
-            <div className={`shadow-sm border-b px-4 py-3 flex items-center justify-between transition-colors ${isDarkMode
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-200'
-                }`}>
-                <div className="flex items-center space-x-2">
-                    <Bot className={`h-6 w-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                    <h1 className={`text-xl font-semibold transition-colors ${isDarkMode ? 'text-white' : 'text-gray-900'
-                        }`}>LLMChat <span className={`text-xs font-extralight transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                            }`}>v1.2.0</span></h1>
-                    <button
-                        onClick={() => setShowSettings(prev => !prev)}
-                        className={`px-2 py-1 text-xs rounded-md transition-colors cursor-pointer ${isDarkMode
-                            ? 'bg-gray-700 text-gray-300 border border-gray-600 hover:bg-gray-600'
-                            : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
-                            }`}
-                        title={showSettings ? '點擊關閉設定' : '點擊開啟設定'}
-                    >
-                        {settings.model || '未選擇模型'}
-                    </button>
-                </div>
-                <div className="flex items-center space-x-2">
-                    {/* GitHub 連結 */}
-                    <a
-                        href="https://github.com/anomixer/llmchat"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`p-1 rounded transition-colors ${isDarkMode
-                            ? 'text-gray-400 hover:text-gray-200'
-                            : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        title="在 GitHub 上查看"
-                    >
-                        <img
-                            src="/github.svg"
-                            alt="GitHub"
-                            className={`h-5 w-5 ${isDarkMode ? 'filter invert' : ''}`}
-                        />
-                    </a>
-                    {/* 對話列表按鈕 */}
-                    <button
-                        onClick={() => setShowConversations(!showConversations)}
-                        className={`p-2 rounded-lg transition-colors ${showConversations
-                            ? (isDarkMode ? 'text-green-400 bg-gray-700' : 'text-green-600 bg-green-50')
-                            : (isDarkMode
-                                ? 'text-gray-400 hover:text-green-400 hover:bg-gray-700'
-                                : 'text-gray-500 hover:text-green-600 hover:bg-green-50')
-                            }`}
-                        title="對話列表 (Ctrl + B)"
-                        data-button="conversations"
-                    >
-                        <MessageSquare className="h-5 w-5" />
-                    </button>
-                    {/* 新對話按鈕 */}
-                    <button
-                        onClick={createNewConversation}
-                        className={`p-2 rounded-lg transition-colors ${isDarkMode
-                            ? 'text-blue-400 hover:bg-gray-700'
-                            : 'text-blue-600 hover:bg-blue-50'
-                            }`}
-                        title="新對話 (Ctrl + I)"
-                    >
-                        <Plus className="h-5 w-5" />
-                    </button>
-                    {/* 導出按鈕 */}
-                    <div className="relative">
-                        <button
-                            onClick={() => {
-                                const menu = document.getElementById('export-menu')
-                                if (menu) menu.classList.toggle('hidden')
-                            }}
-                            className={`p-2 rounded-lg transition-colors ${isDarkMode
-                                ? 'text-gray-400 hover:text-green-400 hover:bg-gray-700'
-                                : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
-                                }`}
-                            title="導出對話"
-                        >
-                            <Download className="h-5 w-5" />
-                        </button>
-                        <div
-                            id="export-menu"
-                            className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 hidden border border-gray-200 dark:border-gray-700"
-                        >
-                            <div className="py-1">
-                                <button
-                                    onClick={() => {
-                                        exportConversation('json')
-                                        document.getElementById('export-menu')?.classList.add('hidden')
-                                    }}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                >
-                                    導出為 JSON
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        exportConversation('markdown')
-                                        document.getElementById('export-menu')?.classList.add('hidden')
-                                    }}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                >
-                                    導出為 Markdown
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {/* 清除對話按鈕 */}
-                    <button
-                        onClick={clearChat}
-                        className={`p-2 rounded-lg transition-colors ${isDarkMode
-                            ? 'text-gray-400 hover:text-red-400 hover:bg-gray-700'
-                            : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
-                            }`}
-                        title="清除對話 (Ctrl + K)"
-                    >
-                        <Trash2 className="h-5 w-5" />
-                    </button>
-                    {/* 主題切換按鈕 */}
-                    <button
-                        onClick={toggleTheme}
-                        className={`p-2 rounded-lg transition-colors ${isDarkMode
-                            ? 'text-yellow-400 hover:bg-gray-700'
-                            : 'text-gray-500 hover:bg-gray-100'
-                            }`}
-                        title={isDarkMode ? '切換到亮色模式' : '切換到暗色模式'}
-                    >
-                        {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                    </button>
-                    {/* 設定按鈕 */}
-                    <button
-                        onClick={() => setShowSettings(!showSettings)}
-                        className={`p-2 rounded-lg transition-colors ${showSettings
-                            ? (isDarkMode ? 'text-blue-400 bg-gray-700' : 'text-blue-600 bg-blue-50')
-                            : (isDarkMode
-                                ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-700'
-                                : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50')
-                            }`}
-                        title="設定 (Ctrl + , )"
-                        data-button="settings"
-                    >
-                        <Settings className="h-5 w-5" />
-                    </button>
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+                <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">載入中...</p>
                 </div>
             </div>
+        )
+    }
+
+    return (
+        <div className={`flex flex-col h-full transition-colors ${isFullscreen ? 'fullscreen-app' : ''} ${isMobileView && !isFullscreen ? 'pt-16' : ''}`}>
+            <Header
+                isDarkMode={isDarkMode}
+                isFullscreen={isFullscreen}
+                showSettings={showSettings}
+                showConversations={showConversations}
+                settings={settings}
+                conversations={conversations}
+                availableModels={availableModels}
+                isLoadingModels={isLoadingModels}
+                currentTheme={(userSettings.theme as 'auto' | 'light' | 'dark')}
+                onToggleTheme={toggleTheme}
+                onToggleFullscreen={toggleFullscreen}
+                onToggleSettings={() => setShowSettings(!showSettings)}
+                onToggleModelOnly={() => {
+                    setShowModelOnly(!showModelOnly)
+                    setShowSettings(false)
+                }}
+                onToggleConversations={() => setShowConversations(!showConversations)}
+                onNewConversation={createNewConversation}
+                onClearChat={clearChat}
+                onExportConversation={exportConversation}
+                onModelChange={(modelId: string) => {
+                    const newPartialSettings = { model: modelId }
+                    
+                    setSettings(prev => ({ ...prev, ...newPartialSettings }))
+                    setUserSettings(prev => ({ ...prev, ...newPartialSettings }))
+                    
+                    try {
+                        const existing = localStorage.getItem('adminProviderSettings')
+                        if (existing) {
+                            const parsed = JSON.parse(existing)
+                            parsed.model = modelId
+                            localStorage.setItem('adminProviderSettings', JSON.stringify(parsed))
+                            
+                            if (parsed.type) {
+                                setSettings(prev => ({ ...prev, type: parsed.type }))
+                                setUserSettings(prev => ({ ...prev, type: parsed.type }))
+                            }
+                        }
+                    } catch (e) {}
+                    
+                    saveUserSettingsToServer(newPartialSettings)
+                }}
+                onLogout={logout}
+                user={user}
+                isMobileView={isMobileView}
+            />
 
             {/* Conversations Panel */}
             {showConversations && (
@@ -1039,13 +961,13 @@ const App: React.FC = () => {
                     <div className="space-y-2">
                         <h3 className={`text-sm font-semibold transition-colors ${isDarkMode ? 'text-gray-200' : 'text-gray-800'
                             }`}>
-                            對話列表
+                            {t('conversation.list')}
                         </h3>
                         <div className="max-h-60 overflow-y-auto space-y-1">
                             {conversations.length === 0 ? (
                                 <p className={`text-sm transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                                     }`}>
-                                    尚無對話
+                                    {t('conversation.empty')}
                                 </p>
                             ) : (
                                 conversations
@@ -1064,7 +986,7 @@ const App: React.FC = () => {
                                                     {conversation.title}
                                                 </p>
                                                 <p className="text-xs opacity-70">
-                                                    {conversation.messages.length} 條消息 · {conversation.updatedAt.toLocaleDateString('zh-TW')}
+                                                    {conversation.messages.length} {t('conversation.messages')} · {conversation.updatedAt.toLocaleDateString(i18n.language)}
                                                 </p>
                                             </div>
                                             <button
@@ -1076,7 +998,7 @@ const App: React.FC = () => {
                                                     ? 'text-gray-400 hover:text-red-400 hover:bg-gray-600'
                                                     : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
                                                     }`}
-                                                title="刪除對話"
+                                                title={t('conversation.delete.button')}
                                             >
                                                 <Trash2 className="h-3 w-3" />
                                             </button>
@@ -1088,164 +1010,131 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {/* Settings Panel */}
-            {showSettings && (
-                <div data-panel="settings" className={`border-b px-4 py-3 transition-colors ${isDarkMode
+            {/* Settings Dropdown */}
+            {(showSettings || showModelOnly) && (
+                <div 
+                    data-panel="settings" 
+                    className={`absolute top-16 right-4 w-72 md:w-80 rounded-lg shadow-xl z-50 border overflow-hidden transition-all duration-200 ease-in-out ${isDarkMode
                     ? 'bg-gray-800 border-gray-700'
                     : 'bg-white border-gray-200'
                     }`}>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* 左側：LLM 配置 */}
-                        <div className="space-y-4">
-                            <h3 className={`text-sm font-semibold transition-colors ${isDarkMode ? 'text-gray-200' : 'text-gray-800'
-                                }`}>
-                                LLM 配置
-                            </h3>
+                    <div className="p-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                        <div className="space-y-6">
+                        {!showModelOnly && (
+                            <>
+                                <div className="space-y-4">
+                                    <h3 className={`text-sm font-semibold transition-colors ${isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                                        }`}>
+                                        {t('settings.panels.user')}
+                                    </h3>
 
-                            <div>
-                                <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                                    }`}>
-                                    API URL (Ollama/OpenAI API 地址)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={settings.apiUrl}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, apiUrl: e.target.value }))}
-                                    placeholder="http://localhost:11434"
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${isDarkMode
-                                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                        : 'bg-white border-gray-300'
-                                        }`}
-                                />
-                            </div>
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                                            }`}>
+                                            {t('settings.language.label')}
+                                        </label>
+                                        <select
+                                            value={i18n.language}
+                                            onChange={async (e) => {
+                                                const newLanguage = e.target.value
+                                                await updateAndSaveSettings('language', newLanguage)
+                                                await i18n.changeLanguage(newLanguage)
+                                                try { localStorage.setItem('llmchat_language', newLanguage) } catch {}
+                                                const htmlElement = document.getElementById('html-root') as HTMLHtmlElement
+                                                if (htmlElement) {
+                                                    htmlElement.lang = newLanguage
+                                                }
+                                            }}
+                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${isDarkMode
+                                                ? 'bg-gray-700 border-gray-600 text-white'
+                                                : 'bg-white border-gray-300'
+                                                }`}
+                                        >
+                                            <option value="zh-TW">🇹🇼 繁體中文</option>
+                                            <option value="zh-CN">🇨🇳 简体中文</option>
+                                            <option value="en">🇺🇸 English</option>
+                                            <option value="ja">🇯🇵 日本語</option>
+                                            <option value="ko">🇰🇷 한국어</option>
+                                        </select>
+                                    </div>
 
-                            <div>
-                                <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                                    }`}>
-                                    API Key (用於需要驗證的 API 服務)
-                                </label>
-                                <input
-                                    type="password"
-                                    value={settings.apiKey}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, apiKey: e.target.value }))}
-                                    placeholder="輸入 API Key (可選)"
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${isDarkMode
-                                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                        : 'bg-white border-gray-300'
-                                        }`}
-                                />
-                            </div>
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                                            }`}>
+                                            {t('settings.theme.label')}
+                                        </label>
+                                        <select
+                                            value={userSettings.theme}
+                                            onChange={async (e) => {
+                                                const newTheme = e.target.value
+                                                await updateAndSaveSettings('theme', newTheme)
+                                                if (newTheme === 'auto') {
+                                                    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+                                                    setIsDarkMode(mediaQuery.matches)
+                                                } else {
+                                                    setIsDarkMode(newTheme === 'dark')
+                                                }
+                                            }}
+                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${isDarkMode
+                                                ? 'bg-gray-700 border-gray-600 text-white'
+                                                : 'bg-white border-gray-300'
+                                                }`}
+                                        >
+                                            <option value="auto">{t('settings.theme.auto')}</option>
+                                            <option value="light">{t('settings.theme.light')}</option>
+                                            <option value="dark">{t('settings.theme.dark')}</option>
+                                        </select>
+                                    </div>
 
-                            <div>
-                                <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                                    }`}>
-                                    模型 (選擇要使用的 AI 模型) {isLoadingModels && <span className="text-xs text-gray-500">(載入中...)</span>}
-                                    {modelsError && (
-                                        <span className="text-xs text-red-500 ml-2">({modelsError})</span>
-                                    )}
-                                    {availableModels.length === 0 && !isLoadingModels && !modelsError && (
-                                        <span className="text-xs text-red-500 ml-2">(未找到模型)</span>
-                                    )}
-                                </label>
-                                <select
-                                    value={settings.model}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, model: e.target.value }))}
-                                    disabled={isLoadingModels}
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${isDarkMode
-                                        ? 'bg-gray-700 border-gray-600 text-white disabled:opacity-50'
-                                        : 'bg-white border-gray-300 disabled:opacity-50'
-                                        }`}
-                                >
-                                    {isLoadingModels ? (
-                                        <option value="">載入中...</option>
-                                    ) : availableModels.length > 0 ? (
-                                        availableModels.map(model => (
-                                            <option key={model.id} value={model.id}>
-                                                {model.name}
-                                            </option>
-                                        ))
-                                    ) : (
-                                        <option value="">沒有可用模型</option>
-                                    )}
-                                </select>
-                            </div>
-                        </div>
+                                    {/* AI 供應商配置按鈕 */}
+                                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4 space-y-3">
+                                        <h4 className={`text-sm font-medium transition-colors ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                                            🤖 AI Provider 設置
+                                        </h4>
+                                        <button
+                                            onClick={() => {
+                                                setShowProviderSettingsModal(true)
+                                                setShowSettings(false)
+                                            }}
+                                            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors flex items-center justify-center gap-2 shadow-sm text-sm"
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                            配置 API 與模型
+                                        </button>
+                                    </div>
 
-                        {/* 右側：生成參數 */}
-                        <div className="space-y-4">
-                            <h3 className={`text-sm font-semibold transition-colors ${isDarkMode ? 'text-gray-200' : 'text-gray-800'
-                                }`}>
-                                生成參數
-                            </h3>
-
-                            <div>
-                                <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                                    }`}>
-                                    溫度: <span className="text-blue-600 dark:text-blue-400 font-semibold">{settings.temperature}</span> (控制輸出的隨機性參數 0-2：低溫=確定、邏輯、一致；高溫=多樣、創造、驚喜)
-                                </label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="2"
-                                    step="0.1"
-                                    value={settings.temperature}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
-                                    className={`w-full ${isDarkMode ? 'accent-blue-400' : 'accent-blue-600'
-                                        }`}
-                                />
-                            </div>
-
-                            <div>
-                                <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                                    }`}>
-                                    Top P: <span className="text-blue-600 dark:text-blue-400 font-semibold">{settings.topP}</span> (控制核心採樣的機率參數 0-1：高=高機率；低=低機率)
-                                </label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.05"
-                                    value={settings.topP}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, topP: parseFloat(e.target.value) }))}
-                                    className={`w-full ${isDarkMode ? 'accent-blue-400' : 'accent-blue-600'
-                                        }`}
-                                />
-                            </div>
-
-                            <div>
-                                <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                                    }`}>
-                                    Top K: <span className="text-blue-600 dark:text-blue-400 font-semibold">{settings.topK}</span> (限制候選Token的數量參數 1-100：高=取樣多；低=取樣少)
-                                </label>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="100"
-                                    step="1"
-                                    value={settings.topK}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, topK: parseInt(e.target.value) }))}
-                                    className={`w-full ${isDarkMode ? 'accent-blue-400' : 'accent-blue-600'
-                                        }`}
-                                />
-                            </div>
-
-                            <div>
-                                <label className={`block text-sm font-medium mb-1 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                                    }`}>
-                                    最大 Context 數: <span className="text-blue-600 dark:text-blue-400 font-semibold">{settings.maxTokens}</span> (設定生成回應的最大上下文長度 4096-262144)
-                                </label>
-                                <input
-                                    type="range"
-                                    min="4096"
-                                    max="262144"
-                                    step="1024"
-                                    value={settings.maxTokens}
-                                    onChange={(e) => setSettings(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
-                                    className={`w-full ${isDarkMode ? 'accent-blue-400' : 'accent-blue-600'
-                                        }`}
-                                />
-                            </div>
-
+                                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4">
+                                        <label className={`block text-sm font-medium mb-2 transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                                            }`}>
+                                            {t('settings.parameters.showTokenStats')}
+                                        </label>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    updateAndSaveSettings('showTokenStats', !userSettings.showTokenStats)
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${settings.showTokenStats
+                                                    ? 'bg-blue-600'
+                                                    : isDarkMode
+                                                        ? 'bg-gray-600'
+                                                        : 'bg-gray-200'
+                                                    }`}
+                                            >
+                                                <span
+                                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showTokenStats ? 'translate-x-6' : 'translate-x-1'
+                                                        }`}
+                                                />
+                                            </button>
+                                            <span className={`text-sm transition-colors ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                                                }`}>
+                                                {settings.showTokenStats ? t('settings.parameters.on') : t('settings.parameters.off')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                         </div>
                     </div>
                 </div>
@@ -1258,15 +1147,15 @@ const App: React.FC = () => {
                         }`}>
                         <Bot className={`h-12 w-12 mx-auto mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-300'
                             }`} />
-                        <p className="text-lg mb-2">開始與 AI 對話吧！</p>
-                        <p className="text-sm">輸入或說出您的問題，我會盡力為您回答。</p>
-                        <p className="text-sm">您也可以上傳檔案，我來幫您分析與歸納。</p>
+                        <p className="text-lg mb-2">{t('app.welcome.title')}</p>
+                        <p className="text-sm">{t('app.welcome.subtitle')}</p>
+                        <p className="text-sm">{t('app.welcome.fileHint')}</p>
                     </div>
                 ) : (
                     currentMessages.map((message) => (
                         <div
                             key={message.id}
-                            className={`flex items-start space-x-3 ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                            className={`flex items-start space-x-3 group ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                                 }`}
                         >
                             <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${message.role === 'user'
@@ -1283,30 +1172,29 @@ const App: React.FC = () => {
                             </div>
                             <div className={`flex-1 max-w-[90%] ${message.role === 'user' ? 'text-right' : ''
                                 }`}>
-                                <div className={`inline-block px-4 py-2 rounded-lg transition-colors chat-message-content ${message.role === 'user'
+                                <div className={`inline-block px-4 py-2 rounded-lg transition-colors chat-message-content relative ${message.role === 'user'
                                     ? 'bg-blue-600 text-white'
-                                    : isDarkMode
+                                    : `pr-8 ${isDarkMode
                                         ? 'bg-gray-800 text-gray-100 border border-gray-700'
                                         : 'bg-white text-gray-900 border border-gray-200'
+                                    }`
                                     }`}>
                                     {(() => {
                                         const lines = message.content.split('\n')
                                         const fileLineIndex = lines.findIndex(line => line.startsWith('[附加檔案:'))
                                         const hasFiles = fileLineIndex !== -1
 
-                                        // 分離內容和檔案部分
                                         const contentLines = hasFiles ? lines.slice(0, fileLineIndex) : lines
                                         const fileLines = hasFiles ? lines.slice(fileLineIndex) : []
 
                                         return (
                                             <>
-                                                {/* 主要內容使用Markdown渲染 */}
                                                 <MarkdownMessage
                                                     content={contentLines.join('\n')}
                                                     isDarkMode={isDarkMode}
+                                                    isUser={message.role === 'user'}
                                                 />
 
-                                                {/* 附加檔案部分 */}
                                                 {fileLines.map((line, index) => {
                                                     if (line.startsWith('[附加檔案:')) {
                                                         return (
@@ -1323,7 +1211,7 @@ const App: React.FC = () => {
                                                                             : 'text-gray-600 hover:text-gray-800')
                                                                         }`}
                                                                 >
-                                                                    <span>附加檔案</span>
+                                                                    <span>{t('messages.files')}</span>
                                                                     <svg
                                                                         className={`w-4 h-4 transition-transform ${expandedFiles.has(message.id) ? 'rotate-90' : ''}`}
                                                                         fill="none"
@@ -1351,18 +1239,6 @@ const App: React.FC = () => {
                                     })()}
                                     {message.role === 'assistant' && (
                                         <>
-                                            <button
-                                                onClick={() => speakText(message.content)}
-                                                className={`mt-2 p-1 rounded transition-colors ${isSpeaking
-                                                    ? 'text-green-500'
-                                                    : isDarkMode
-                                                        ? 'text-gray-400 hover:text-green-400 hover:bg-gray-700'
-                                                        : 'text-gray-500 hover:text-green-600 hover:bg-gray-100'
-                                                    }`}
-                                                title={isSpeaking ? '停止語音' : '語音播放'}
-                                            >
-                                                {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                                            </button>
                                             {message.thinking && (
                                                 <div className="mt-3 border-t border-gray-200 dark:border-gray-600 pt-3">
                                                     <button
@@ -1372,7 +1248,7 @@ const App: React.FC = () => {
                                                             : 'text-gray-600 hover:text-gray-800'
                                                             }`}
                                                     >
-                                                        <span>思考過程</span>
+                                                        <span>{t('messages.thinking')}</span>
                                                         <svg
                                                             className={`w-4 h-4 transition-transform ${expandedThinking.has(message.id) ? 'rotate-90' : ''}`}
                                                             fill="none"
@@ -1394,16 +1270,95 @@ const App: React.FC = () => {
                                             )}
                                         </>
                                     )}
+
+                                    {message.role === 'assistant' && (
+                                        <div className="absolute top-1 right-1 flex flex-col items-center space-y-1 z-10">
+                                            <button
+                                                key={`speech-btn-${message.id}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    toggleSpeechForMessage({ messageId: message.id, text: message.content })
+                                                }}
+                                                className={`p-1 rounded-full transition-colors shadow-sm ${(() => {
+                                                    const { isPlayingThis, isGlobalPlaying, isInQueue } = getSpeechButtonState(message.id)
+
+                                                    if (isPlayingThis) {
+                                                        return 'bg-green-500 text-white hover:bg-green-600'
+                                                    } else if (isInQueue) {
+                                                        return 'bg-orange-500 text-white hover:bg-red-400'
+                                                    } else if (isGlobalPlaying) {
+                                                        return 'bg-red-500 text-white'
+                                                    } else {
+                                                        return isDarkMode
+                                                            ? 'bg-gray-600 text-gray-300 hover:text-green-400 hover:bg-gray-500'
+                                                            : 'bg-gray-200 text-gray-600 hover:text-green-600 hover:bg-gray-300'
+                                                    }
+                                                })()
+                                                    }`}
+                                                title={
+                                                    isSpeaking && currentPlayingItemRef.current?.messageId === message.id
+                                                        ? t('messages.voice.stop')
+                                                        : globalSpeakingMessageId === message.id
+                                                            ? t('messages.voice.otherTabPlaying')
+                                                            : speechQueue.some(item => item.messageId === message.id)
+                                                                ? t('messages.voice.removeFromQueue')
+                                                                : t('messages.voice.play')
+                                                }
+                                                disabled={isSpeechButtonDisabled(message.id)}
+                                                style={{ zIndex: 10, pointerEvents: 'auto' }}
+                                            >
+                                                <Volume2 className="h-3 w-3" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleDeleteMessage(currentConversationId, message.id)
+                                                }}
+                                                className={`p-1 rounded-full transition-colors shadow-sm opacity-0 group-hover:opacity-100 ${isDarkMode
+                                                    ? 'text-gray-400 hover:text-red-400 hover:bg-gray-700'
+                                                    : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                                                    }`}
+                                                title={t('messages.delete.button')}
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {message.role === 'user' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleDeleteMessage(currentConversationId, message.id)
+                                            }}
+                                            className={`absolute top-1 right-1 p-1 rounded-full transition-colors shadow-sm opacity-0 group-hover:opacity-100 ${isDarkMode
+                                                ? 'text-gray-400 hover:text-red-400 hover:bg-gray-600'
+                                                : 'text-gray-500 hover:text-red-600 hover:bg-gray-200'
+                                                }`}
+                                            title={t('messages.delete.button')}
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
+                                    )}
+
+                                    {message.role === 'assistant' && message.tokenCount !== undefined && settings.showTokenStats && (
+                                        <div className={`mt-2 text-xs font-mono transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            <span className="inline-block px-2 py-1 rounded-sm bg-gray-100 dark:bg-gray-700">
+                                                {message.tokenCount} tokens | {(message.tokensPerSecond || 0).toFixed(2)} tokens/s
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
+
                                 <p className={`text-xs mt-1 transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                                     }`}>
-                                    {message.timestamp.toLocaleTimeString('zh-TW')}
+                                    {message.timestamp.toLocaleTimeString(i18n.language)}
                                 </p>
                             </div>
                         </div>
                     ))
                 )}
-                {false && (
+                {isStreaming && (
                     <div className="flex items-start space-x-3">
                         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isDarkMode
                             ? 'bg-gray-700 text-gray-300'
@@ -1411,82 +1366,62 @@ const App: React.FC = () => {
                             }`}>
                             <Bot className="h-4 w-4" />
                         </div>
-                        <div className={`border rounded-lg px-4 py-2 transition-colors ${isDarkMode
-                            ? 'bg-gray-800 border-gray-700'
-                            : 'bg-white border-gray-200'
-                            }`}>
-                            <div className="flex space-x-1">
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="flex-1 max-w-[90%] transition-colors">
+                            <div className={`inline-block px-4 py-2 rounded-lg transition-colors ${isDarkMode
+                                ? 'bg-gray-800 text-gray-100 border border-gray-700'
+                                : 'bg-white text-gray-900 border border-gray-200'
+                                }`}>
+                                <MarkdownMessage
+                                    content={streamingMessage || t('messages.generating')}
+                                    isDarkMode={isDarkMode}
+                                    isUser={false}
+                                />
+                                <div className="flex space-x-1 mt-2">
+                                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                </div>
+                                {streamingThinking && (
+                                    <div className="mt-3 border-t border-gray-200 dark:border-gray-600 pt-3">
+                                        <button
+                                            onClick={() => setShowStreamingThinking(!showStreamingThinking)}
+                                            className={`flex items-center space-x-2 text-sm font-medium transition-colors ${isDarkMode
+                                                ? 'text-gray-400 hover:text-gray-200'
+                                                : 'text-gray-600 hover:text-gray-800'
+                                                }`}
+                                        >
+                                            <span>{t('messages.thinking')}</span>
+                                            <svg
+                                                className={`w-4 h-4 transition-transform ${showStreamingThinking ? 'rotate-90' : ''}`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                        {showStreamingThinking && (
+                                            <div className={`mt-2 p-3 rounded-md text-sm transition-colors ${isDarkMode
+                                                ? 'bg-gray-700 text-gray-300 border border-gray-600'
+                                                : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                                }`}>
+                                                <pre className="whitespace-pre-wrap break-words font-mono text-xs">{streamingThinking}</pre>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {settings.showTokenStats && (
+                                    <div className={`mt-2 text-xs font-mono transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                        <span className="inline-block px-2 py-1 rounded-sm bg-gray-100 dark:bg-gray-700">
+                                            {tokenCount} tokens | {tokensPerSecond.toFixed(2)} tokens/s
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 )}
-                {isStreaming && (() => {
-                    console.log('Rendering streaming UI, message:', streamingMessage, 'thinking:', streamingThinking)
-                    return (
-                        <div className="flex items-start space-x-3">
-                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isDarkMode
-                                ? 'bg-gray-700 text-gray-300'
-                                : 'bg-gray-200 text-gray-600'
-                                }`}>
-                                <Bot className="h-4 w-4" />
-                            </div>
-                            <div className={`flex-1 max-w-[90%] transition-colors`}>
-                                <div className={`inline-block px-4 py-2 rounded-lg transition-colors ${isDarkMode
-                                    ? 'bg-gray-800 text-gray-100 border border-gray-700'
-                                    : 'bg-white text-gray-900 border border-gray-200'
-                                    }`}>
-                                    <MarkdownMessage
-                                        content={streamingMessage || '正在生成回應...'}
-                                        isDarkMode={isDarkMode}
-                                    />
-                                    {/* 串流中的思考過程 */}
-                                    {streamingThinking && (
-                                        <div className="mt-3 border-t border-gray-200 dark:border-gray-600 pt-3">
-                                            <button
-                                                onClick={() => setExpandedStreamingThinking(!expandedStreamingThinking)}
-                                                className={`flex items-center space-x-2 text-sm font-medium transition-colors ${isDarkMode
-                                                    ? 'text-gray-400 hover:text-gray-200'
-                                                    : 'text-gray-600 hover:text-gray-800'
-                                                    }`}
-                                            >
-                                                <span>思考過程</span>
-                                                <div className="flex space-x-1">
-                                                    <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-                                                    <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                                    <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                                                </div>
-                                                <svg
-                                                    className={`w-4 h-4 transition-transform ${expandedStreamingThinking ? 'rotate-90' : ''}`}
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </button>
-                                            {expandedStreamingThinking && (
-                                                <div className={`mt-2 p-3 rounded-md text-sm transition-colors ${isDarkMode
-                                                    ? 'bg-gray-700 text-gray-300 border border-gray-600'
-                                                    : 'bg-gray-50 text-gray-700 border border-gray-200'
-                                                    }`}>
-                                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs">{streamingThinking}</pre>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    <div className="flex space-x-1 mt-2">
-                                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )
-                })()}
                 <div ref={messagesEndRef} />
             </div>
 
@@ -1495,7 +1430,6 @@ const App: React.FC = () => {
                 ? 'bg-gray-800 border-gray-700'
                 : 'bg-white border-gray-200'
                 }`}>
-                {/* 附加檔案顯示 */}
                 {attachedFiles.length > 0 && (
                     <div className="mb-3 flex flex-wrap gap-2">
                         {attachedFiles.map((file, index) => (
@@ -1523,21 +1457,27 @@ const App: React.FC = () => {
                 )}
                 <div className="flex items-end space-x-3">
                     <div className="flex-1 relative">
-                        <textarea
-                            ref={textareaRef}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="輸入您的訊息... (Shift+Enter 換行)"
-                            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[52px] max-h-32 transition-colors ${isDarkMode
-                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                : 'bg-white border-gray-300'
-                                }`}
-                            rows={1}
-                            disabled={isLoading}
-                        />
+                        <div className="relative">
+                            <textarea
+                                ref={textareaRef}
+                                value={input}
+                                onChange={(e) => setInputDebounced(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                placeholder={isMobileView ? (input ? '' : '輸入訊息...') : t('input.placeholder')}
+                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[52px] max-h-32 transition-colors ${isDarkMode
+                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                    : 'bg-white border-gray-300'
+                                    }`}
+                                rows={1}
+                                disabled={isLoading}
+                            />
+                            {stopConfirmText && (
+                                <div className={`absolute right-6 top-1/2 transform -translate-y-1/2 text-sm font-medium pointer-events-none transition-colors ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                    {t('buttons.stopConfirm')}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    {/* 檔案上傳按鈕 */}
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -1546,7 +1486,6 @@ const App: React.FC = () => {
                         onChange={handleFileSelect}
                         className="hidden"
                     />
-                    {/* 語音輸入按鈕 */}
                     <button
                         onClick={startVoiceInput}
                         className={`p-3 rounded-lg transition-colors ${isRecording
@@ -1555,37 +1494,85 @@ const App: React.FC = () => {
                                 ? 'text-gray-400 hover:text-red-400 hover:bg-gray-700'
                                 : 'text-gray-500 hover:text-red-600 hover:bg-gray-100'
                             }`}
-                        title={isRecording ? '停止語音輸入' : '語音輸入'}
+                        title={isRecording ? t('input.voice.stop') : t('input.voice.start')}
                         disabled={isLoading}
                     >
                         {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                     </button>
-                    {/* 檔案上傳按鈕 */}
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         className={`p-3 rounded-lg transition-colors ${isDarkMode
                             ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-700'
                             : 'text-gray-500 hover:text-blue-600 hover:bg-gray-100'
                             }`}
-                        title="附加檔案"
+                        title={t('input.files.button')}
                         disabled={isLoading}
                     >
                         <Paperclip className="h-5 w-5" />
                     </button>
                     <button
-                        onClick={sendMessage}
-                        disabled={(!input.trim() && attachedFiles.length === 0) || isLoading || availableModels.length === 0}
-                        className={`p-3 rounded-lg transition-colors ${(input.trim() || attachedFiles.length > 0) && !isLoading && availableModels.length > 0
-                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        onClick={handleSendClick}
+                        disabled={(!input.trim() && attachedFiles.length === 0) && !isStreaming || availableModels.length === 0}
+                        className={`p-3 rounded-lg transition-colors ${(input.trim() || attachedFiles.length > 0 || isStreaming) && availableModels.length > 0
+                            ? isStreaming
+                                ? stopRequested
+                                    ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse'
+                                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
                             : isDarkMode
                                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             }`}
+                        title={isStreaming ? (stopRequested ? t('buttons.stopAction') : t('buttons.stop')) : t('buttons.send')}
                     >
-                        <Send className="h-5 w-5" />
+                        {isStreaming ? (
+                            stopRequested ? (
+                                <span className="text-xs font-medium">{t('buttons.stopAction')}</span>
+                            ) : (
+                                <Square className="h-5 w-5" />
+                            )
+                        ) : (
+                            <Send className="h-5 w-5" />
+                        )}
                     </button>
                 </div>
             </div>
+
+            {/* Provider Configuration Modal */}
+            {showProviderSettingsModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                    <div 
+                        className={`w-full max-w-lg p-6 rounded-xl shadow-2xl border transition-all duration-200 transform scale-100 ${
+                            isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'
+                        }`}
+                    >
+                        <div className="flex justify-between items-center mb-4 border-b pb-3 border-gray-200 dark:border-gray-700">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                🔧 API Provider 設置
+                            </h3>
+                            <button 
+                                onClick={() => setShowProviderSettingsModal(false)}
+                                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                            <ProviderSettings
+                                currentProvider={{
+                                    type: settings.type || 'ollama',
+                                    baseUrl: settings.apiUrl || 'http://localhost:11434',
+                                    model: settings.model || '',
+                                    requiresApiKey: (settings.type || 'ollama') !== 'ollama'
+                                }}
+                                availableProviders={AVAILABLE_PROVIDERS}
+                                onSave={handleSaveProviderSettings}
+                                onClose={() => setShowProviderSettingsModal(false)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
