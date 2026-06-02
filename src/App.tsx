@@ -1748,6 +1748,9 @@ const App: React.FC = () => {
                                     type: settings.type || 'ollama',
                                     baseUrl: settings.apiUrl || 'http://localhost:11434',
                                     model: settings.model || '',
+                                    apiKey: settings.apiKey || '',
+                                    temperature: settings.temperature ?? 0.7,
+                                    maxTokens: settings.maxTokens ?? 2048,
                                     requiresApiKey: AVAILABLE_PROVIDERS.find(p => p.type === (settings.type || 'ollama'))?.requiresApiKey ?? true
                                 }}
                                 availableProviders={AVAILABLE_PROVIDERS}

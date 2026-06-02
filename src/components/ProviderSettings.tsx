@@ -15,6 +15,9 @@ interface ProviderSettingsProps {
         type: string
         baseUrl: string
         model: string
+        apiKey: string
+        temperature: number
+        maxTokens: number
         requiresApiKey: boolean
     }
     availableProviders: Provider[]
@@ -40,13 +43,17 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
         availableProviders.find(p => p.type === currentProvider.type) || availableProviders[0]
     )
     const [baseUrl, setBaseUrl] = useState(currentProvider.baseUrl)
-    const [apiKey, setApiKey] = useState('')
+    const [apiKey, setApiKey] = useState(currentProvider.apiKey || '')
     const [model, setModel] = useState(currentProvider.model)
-    const [temperature, setTemperature] = useState(0.7)
-    const [maxTokens, setMaxTokens] = useState(2048)
+    const [temperature, setTemperature] = useState(currentProvider.temperature ?? 0.7)
+    const [maxTokens, setMaxTokens] = useState(currentProvider.maxTokens ?? 2048)
     const [isChecking, setIsChecking] = useState(false)
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle')
     const [connectionMessage, setConnectionMessage] = useState('')
+    const [fetchedModels, setFetchedModels] = useState<string[]>([])
+    const [isFetchingModels, setIsFetchingModels] = useState(false)
+    const [fetchError, setFetchError] = useState('')
+    const [isManualInput, setIsManualInput] = useState(true)
 
     // 當選擇不同 provider 時，更新預設值
     useEffect(() => {
@@ -110,6 +117,78 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
             setConnectionMessage(`${t('admin.llm.testFailed')}。${t('admin.llm.corsHint')}`)
         } finally {
             setIsChecking(false)
+        }
+    }
+
+    // 獲取可用模型列表
+    const fetchAvailableModels = async () => {
+        setIsFetchingModels(true)
+        setFetchError('')
+        try {
+            const cleanApiUrl = baseUrl.replace(/\/v1\/?$/, '')
+            let modelsList: string[] = []
+
+            if (selectedProvider.type === 'ollama' || selectedProvider.type === 'ollama-cloud') {
+                const response = await fetch(`${cleanApiUrl}/api/tags`)
+                if (response.ok) {
+                    const data = await response.json()
+                    modelsList = (data.models || []).map((m: any) => m.name)
+                } else {
+                    throw new Error(`Status ${response.status}`)
+                }
+            } else if (selectedProvider.type === 'anthropic' || selectedProvider.type === 'synthetic') {
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    'anthropic-version': '2023-06-01',
+                    'dangerously-allow-browser': 'true'
+                }
+                if (apiKey) {
+                    headers['x-api-key'] = apiKey
+                }
+                const response = await fetch(`${cleanApiUrl}/v1/models`, {
+                    method: 'GET',
+                    headers
+                })
+                if (response.ok) {
+                    const data = await response.json()
+                    modelsList = (data.data || []).map((m: any) => m.id)
+                } else {
+                    throw new Error(`Status ${response.status}`)
+                }
+            } else {
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json'
+                }
+                if (apiKey) {
+                    headers['Authorization'] = `Bearer ${apiKey}`
+                }
+                const response = await fetch(`${cleanApiUrl}/v1/models`, {
+                    method: 'GET',
+                    headers
+                })
+                if (response.ok) {
+                    const data = await response.json()
+                    modelsList = (data.data || []).map((m: any) => m.id)
+                } else {
+                    throw new Error(`Status ${response.status}`)
+                }
+            }
+
+            if (modelsList.length > 0) {
+                setFetchedModels(modelsList)
+                setIsManualInput(false)
+                // If current model is empty or not in the list, set it to the first fetched model
+                if (!model || !modelsList.includes(model)) {
+                    setModel(modelsList[0])
+                }
+            } else {
+                setFetchError('⚠️ 未能取得任何可用模型')
+            }
+        } catch (error: any) {
+            console.error('Fetch models error:', error)
+            setFetchError(`❌ ${t('admin.llm.fetchModels')}失敗，請檢查 API 設定與 CORS 限制。`)
+        } finally {
+            setIsFetchingModels(false)
         }
     }
 
@@ -190,13 +269,57 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
             {/* Model */}
             <div>
                 <label className="block text-sm font-medium mb-2">{t('admin.llm.modelName')}</label>
-                <input
-                    type="text"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="llama3"
-                    className="w-full px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="flex gap-2">
+                    {!isManualInput && fetchedModels.length > 0 ? (
+                        <select
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            className="flex-1 px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {fetchedModels.map(modelName => (
+                                <option key={modelName} value={modelName}>
+                                    {modelName}
+                                </option>
+                            ))}
+                            {!fetchedModels.includes(model) && model && (
+                                <option value={model}>
+                                    {model} ({t('admin.llm.current')})
+                                </option>
+                            )}
+                        </select>
+                    ) : (
+                        <input
+                            type="text"
+                            value={model}
+                            onChange={(e) => setModel(e.target.value)}
+                            placeholder="llama3"
+                            className="flex-1 px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    )}
+
+                    {fetchedModels.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setIsManualInput(!isManualInput)}
+                            className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-md text-sm transition-colors"
+                            title={isManualInput ? t('admin.llm.selectProvider') : t('admin.llm.modelName')}
+                        >
+                            {isManualInput ? '📋' : '✏️'}
+                        </button>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={fetchAvailableModels}
+                        disabled={isFetchingModels}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors disabled:opacity-50 flex-shrink-0 text-sm"
+                    >
+                        {isFetchingModels ? '...' : t('admin.llm.fetchModels')}
+                    </button>
+                </div>
+                {fetchError && (
+                    <p className="text-xs text-red-400 mt-1">{fetchError}</p>
+                )}
             </div>
 
             {/* Temperature */}
