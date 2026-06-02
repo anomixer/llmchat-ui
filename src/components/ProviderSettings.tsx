@@ -133,11 +133,11 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
 
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-semibold mb-4">🔧 Provider 設置</h2>
+            <h2 className="text-xl font-semibold mb-4">🔧 {t('admin.llm.config')}</h2>
 
             {/* Provider 選擇 */}
             <div>
-                <label className="block text-sm font-medium mb-2">選擇 Provider</label>
+                <label className="block text-sm font-medium mb-2">{t('admin.llm.selectProvider')}</label>
                 <select
                     value={selectedProvider?.type || ''}
                     onChange={(e) => {
@@ -162,7 +162,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
 
             {/* API URL */}
             <div>
-                <label className="block text-sm font-medium mb-2">API URL</label>
+                <label className="block text-sm font-medium mb-2">{t('admin.llm.baseUrl')}</label>
                 <input
                     type="text"
                     value={baseUrl}
@@ -175,7 +175,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
             {/* API Key */}
             {selectedProvider?.requiresApiKey && (
                 <div>
-                    <label className="block text-sm font-medium mb-2">API Key 🔑</label>
+                    <label className="block text-sm font-medium mb-2">{t('admin.llm.apiKey')} 🔑</label>
                     <input
                         type="password"
                         value={apiKey}
@@ -184,14 +184,14 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                         className="w-full px-3 py-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <p className="text-xs text-gray-400 mt-1">
-                        此密鑰將儲存在您本地瀏覽器 (localStorage) 中，請小心保管
+                        {t('settings.apiKeyLocalHint')}
                     </p>
                 </div>
             )}
 
             {/* Model */}
             <div>
-                <label className="block text-sm font-medium mb-2">Model</label>
+                <label className="block text-sm font-medium mb-2">{t('admin.llm.modelName')}</label>
                 <input
                     type="text"
                     value={model}
@@ -239,12 +239,12 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                     {isChecking ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            檢查中...
+                            {t('admin.llm.testing')}
                         </>
                     ) : (
                         <>
                             <Check className="w-4 h-4" />
-                            檢查連接
+                            {t('admin.llm.testConnection')}
                         </>
                     )}
                 </button>
@@ -252,7 +252,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                     onClick={handleSave}
                     className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white font-medium transition-colors"
                 >
-                    保存設置
+                    {t('admin.llm.saveSettings')}
                 </button>
             </div>
 

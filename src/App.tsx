@@ -1262,7 +1262,7 @@ const App: React.FC = () => {
                                     {/* AI 供應商配置按鈕 */}
                                     <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4 space-y-3">
                                         <h4 className={`text-sm font-medium transition-colors ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                                            🤖 AI Provider 設置
+                                            {t('settings.aiProviderSettings')}
                                         </h4>
                                         <button
                                             onClick={() => {
@@ -1272,7 +1272,7 @@ const App: React.FC = () => {
                                             className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors flex items-center justify-center gap-2 shadow-sm text-sm"
                                         >
                                             <Settings className="w-4 h-4" />
-                                            配置 API 與模型
+                                            {t('settings.configureApiAndModel')}
                                         </button>
                                     </div>
 

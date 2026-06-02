@@ -60,6 +60,9 @@
         "adminButton": "User Management"
     },
     "settings": {
+        "configureApiAndModel": "Configure API & Models",
+        "aiProviderSettings": "🤖 AI Provider Settings",
+        "apiKeyLocalHint": "This key will be stored in your local browser (localStorage), please keep it safe",
         "panels": {
             "user": "User Settings",
             "llm": "LLM Configuration",

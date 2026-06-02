@@ -60,6 +60,9 @@
         "adminButton": "ユーザー管理"
     },
     "settings": {
+        "configureApiAndModel": "API とモデルの構成",
+        "aiProviderSettings": "🤖 AI プロバイダーの設定",
+        "apiKeyLocalHint": "このキーはローカルブラウザ（localStorage）に保存されます。大切に保管してください",
         "panels": {
             "user": "ユーザー設定",
             "llm": "LLM設定",

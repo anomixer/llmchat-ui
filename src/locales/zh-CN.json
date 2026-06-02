@@ -60,6 +60,9 @@
         "adminButton": "用户管理"
     },
     "settings": {
+        "configureApiAndModel": "配置 API 与模型",
+        "aiProviderSettings": "🤖 AI Provider 设置",
+        "apiKeyLocalHint": "此密钥将储存在您本地浏览器 (localStorage) 中，请小心保管",
         "panels": {
             "user": "用户设置",
             "llm": "LLM 配置",
