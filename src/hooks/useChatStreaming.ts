@@ -178,11 +178,15 @@ export function useChatStreaming() {
                 const ollamaImages = images?.map(cleanBase64)
 
                 const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
+                const ollamaHeaders: Record<string, string> = {
+                    'Content-Type': 'application/json'
+                }
+                if (apiKey) {
+                    ollamaHeaders['Authorization'] = `Bearer ${apiKey}`
+                }
                 response = await fetch(`${cleanApiUrl}/api/chat`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: ollamaHeaders,
                     body: JSON.stringify({
                         model: settings.model || 'llama3',
                         messages: [

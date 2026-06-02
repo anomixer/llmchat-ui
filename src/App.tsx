@@ -143,8 +143,8 @@ const AVAILABLE_PROVIDERS = [
         name: 'Ollama Cloud',
         type: 'ollama-cloud',
         baseUrl: 'https://ollama.com',
-        description: 'Ollama 雲端服務，無需 API Key',
-        requiresApiKey: false
+        description: 'Ollama 雲端服務，需要 API Key',
+        requiresApiKey: true
     },
     {
         name: 'vLLM',
@@ -431,7 +431,16 @@ const App: React.FC = () => {
 
             try {
                 if (providerType === 'ollama' || providerType === 'ollama-cloud') {
-                    const response = await fetch(`${cleanApiUrl}/api/tags`)
+                    const headers: Record<string, string> = {
+                        'Content-Type': 'application/json'
+                    }
+                    if (apiKey) {
+                        headers['Authorization'] = `Bearer ${apiKey}`
+                    }
+                    const response = await fetch(`${cleanApiUrl}/api/tags`, {
+                        method: 'GET',
+                        headers
+                    })
                     if (response.ok) {
                         const data = await response.json()
                         models = (data.models || []).map((m: any) => ({
