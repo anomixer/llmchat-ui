@@ -180,7 +180,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     }}
                                 >
                                     <img
-                                        src="/github.svg"
+                                        src="github.svg"
                                         alt="GitHub"
                                         className={`h-4 w-4 ${isDarkMode ? 'filter invert' : ''}`}
                                     />
@@ -358,7 +358,7 @@ export const Header: React.FC<HeaderProps> = ({
                         title={t('header.github')}
                     >
                         <img
-                            src="/github.svg"
+                            src="github.svg"
                             alt="GitHub"
                             className={`h-5 w-5 ${isDarkMode ? 'filter invert' : ''}`}
                         />
