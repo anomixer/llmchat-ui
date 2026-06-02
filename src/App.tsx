@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Bot, User, Settings, Trash2, Moon, Sun, Plus, MessageSquare, Paperclip, X, Mic, MicOff, Volume2, Download, Square, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
+import { Send, Bot, User, Settings, Trash2, Moon, Sun, Plus, MessageSquare, Paperclip, X, Mic, MicOff, Volume2, Download, Square, Maximize2, Minimize2, RefreshCw, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import MarkdownMessage from './MarkdownMsg'
 import { Header } from './components/Header'
@@ -1498,6 +1498,18 @@ const App: React.FC = () => {
                         disabled={isLoading}
                     >
                         {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    </button>
+                    {/* 網路搜尋開關按鈕 (純前端版暫停使用) */}
+                    <button
+                        type="button"
+                        className={`p-3 rounded-lg transition-colors cursor-not-allowed ${isDarkMode
+                            ? 'text-gray-600 hover:bg-gray-700/30'
+                            : 'text-gray-300 hover:bg-gray-100/30'
+                            }`}
+                        title={t('input.webSearchUnsupported')}
+                        disabled
+                    >
+                        <Globe className="h-5 w-5" />
                     </button>
                     <button
                         onClick={() => fileInputRef.current?.click()}

@@ -147,6 +147,7 @@
     },
     "input": {
         "placeholder": "メッセージを入力... (Shift+Enterで改行)",
+        "webSearchUnsupported": "💡 純フロントエンド版は現在、ウェブ検索機能をサポートしていません",
         "voice": {
             "start": "音声入力",
             "stop": "音声入力を停止",

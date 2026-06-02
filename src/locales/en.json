@@ -147,6 +147,7 @@
     },
     "input": {
         "placeholder": "Enter your message... (Shift+Enter for new line)",
+        "webSearchUnsupported": "💡 Pure client-side version does not support custom web search functionality for now",
         "voice": {
             "start": "Voice input",
             "stop": "Stop voice input",

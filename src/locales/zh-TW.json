@@ -149,6 +149,7 @@
     },
     "input": {
         "placeholder": "輸入您的訊息... (Shift+Enter 換行)",
+        "webSearchUnsupported": "💡 純前端版暫不支援自訂聯網搜尋功能",
         "voice": {
             "start": "語音輸入",
             "stop": "停止語音輸入",

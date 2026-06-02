@@ -147,6 +147,7 @@
     },
     "input": {
         "placeholder": "메시지를 입력하세요... (Shift+Enter로 줄바꿈)",
+        "webSearchUnsupported": "💡 순수 프론트엔드 버전은 현재 웹 검색 기능을 지원하지 않습니다",
         "voice": {
             "start": "음성 입력",
             "stop": "음성 입력 중지",
