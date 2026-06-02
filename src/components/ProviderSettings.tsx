@@ -64,8 +64,9 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
         setConnectionMessage('')
 
         try {
-            if (selectedProvider.type === 'ollama') {
-                const response = await fetch(`${baseUrl}/api/tags`)
+            const cleanBaseUrl = baseUrl.replace(/\/v1\/?$/, '')
+            if (selectedProvider.type === 'ollama' || selectedProvider.type === 'ollama-cloud') {
+                const response = await fetch(`${cleanBaseUrl}/api/tags`)
                 if (response.ok) {
                     setConnectionStatus('success')
                     setConnectionMessage('✅ 連接成功')
@@ -77,10 +78,18 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                 const headers: Record<string, string> = {
                     'Content-Type': 'application/json'
                 }
-                if (apiKey) {
-                    headers['Authorization'] = `Bearer ${apiKey}`
+                if (selectedProvider.type === 'anthropic' || selectedProvider.type === 'synthetic') {
+                    headers['anthropic-version'] = '2023-06-01'
+                    headers['dangerously-allow-browser'] = 'true'
+                    if (apiKey) {
+                        headers['x-api-key'] = apiKey
+                    }
+                } else {
+                    if (apiKey) {
+                        headers['Authorization'] = `Bearer ${apiKey}`
+                    }
                 }
-                const response = await fetch(`${baseUrl}/v1/models`, {
+                const response = await fetch(`${cleanBaseUrl}/v1/models`, {
                     method: 'GET',
                     headers
                 })

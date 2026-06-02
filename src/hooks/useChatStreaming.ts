@@ -169,7 +169,7 @@ export function useChatStreaming() {
 
             let response: Response
 
-            if (providerType === 'ollama') {
+            if (providerType === 'ollama' || providerType === 'ollama-cloud') {
                 // Clean base64 prefixes from images if present
                 const cleanBase64 = (dataUrl: string) => {
                     const commaIndex = dataUrl.indexOf(',')
@@ -177,7 +177,8 @@ export function useChatStreaming() {
                 }
                 const ollamaImages = images?.map(cleanBase64)
 
-                response = await fetch(`${apiUrl}/api/chat`, {
+                const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
+                response = await fetch(`${cleanApiUrl}/api/chat`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -203,8 +204,41 @@ export function useChatStreaming() {
                     }),
                     signal: controller.signal
                 })
+            } else if (providerType === 'anthropic' || providerType === 'synthetic') {
+                // Anthropic format
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    'anthropic-version': '2023-06-01',
+                    'dangerously-allow-browser': 'true'
+                }
+                if (apiKey) {
+                    headers['x-api-key'] = apiKey
+                }
+
+                const payload: any = {
+                    model: settings.model,
+                    messages: history.map(msg => ({
+                        role: msg.role === 'assistant' ? 'assistant' : 'user',
+                        content: msg.content
+                    })).concat({ role: 'user', content: message }),
+                    max_tokens: settings.maxTokens || 4096,
+                    stream: true
+                }
+
+                const systemPrompt = settings.systemPrompt || 'You are a helpful AI assistant.'
+                if (systemPrompt) {
+                    payload.system = systemPrompt
+                }
+
+                const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
+                response = await fetch(`${cleanApiUrl}/v1/messages`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                })
             } else {
-                // OpenAI-compatible APIs (OpenAI, DeepSeek, Groq, Custom)
+                // OpenAI-compatible APIs (OpenAI, DeepSeek, Groq, Custom, etc.)
                 const headers: Record<string, string> = {
                     'Content-Type': 'application/json'
                 }
@@ -244,7 +278,8 @@ export function useChatStreaming() {
                     payload.max_tokens = settings.maxTokens
                 }
 
-                response = await fetch(`${apiUrl}/v1/chat/completions`, {
+                const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
+                response = await fetch(`${cleanApiUrl}/v1/chat/completions`, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(payload),
@@ -285,6 +320,21 @@ export function useChatStreaming() {
                             }
                             try {
                                 const parsed = JSON.parse(dataStr)
+
+                                // Anthropic format parsing
+                                if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+                                    const text = parsed.delta.text
+                                    const { thinking, content } = processStreamChunk(text)
+                                    pendingContentUpdate = content
+                                    finalStateRef.current.content = content
+                                    if (thinking) {
+                                        pendingThinkingUpdate = thinking
+                                        finalStateRef.current.thinking = thinking
+                                    }
+                                    currentTokenCount++
+                                }
+
+                                // OpenAI format parsing
                                 const delta = parsed.choices?.[0]?.delta
                                 if (delta) {
                                     // DeepSeek R1 reasoning_content

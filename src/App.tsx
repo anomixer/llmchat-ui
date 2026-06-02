@@ -30,15 +30,29 @@ const AVAILABLE_PROVIDERS = [
     {
         name: 'Ollama',
         type: 'ollama',
-        baseUrl: 'http://127.0.0.1:11434',
-        description: '本地運行的大模型服務，無需 API Key',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+        description: '本地 Ollama 服務器，無需 API Key',
         requiresApiKey: false
     },
     {
         name: 'OpenAI',
         type: 'openai',
-        baseUrl: 'https://api.openai.com',
-        description: 'OpenAI 雲端服務，需要 API Key',
+        baseUrl: 'https://api.openai.com/v1',
+        description: 'GPT-4, GPT-3.5 等模型，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Anthropic Claude',
+        type: 'anthropic',
+        baseUrl: 'https://api.anthropic.com/v1',
+        description: 'Claude 系列模型，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Google Gemini',
+        type: 'google-gemini',
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        description: 'Gemini 系列模型，需要 API Key',
         requiresApiKey: true
     },
     {
@@ -49,17 +63,115 @@ const AVAILABLE_PROVIDERS = [
         requiresApiKey: true
     },
     {
-        name: 'Groq',
-        type: 'groq',
-        baseUrl: 'https://api.groq.com/openai',
-        description: 'Groq 高速推論服務，需要 API Key',
+        name: 'Mistral',
+        type: 'mistral',
+        baseUrl: 'https://api.mistral.ai/v1',
+        description: 'Mistral 系列模型，需要 API Key',
         requiresApiKey: true
     },
     {
-        name: 'Custom (OpenAI 格式)',
+        name: 'Groq',
+        type: 'groq',
+        baseUrl: 'https://api.groq.com/openai/v1',
+        description: 'Groq 高速推理引擎，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'xAI (Grok)',
+        type: 'xai-grok',
+        baseUrl: 'https://api.x.ai/v1',
+        description: 'xAI Grok 模型，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'NVIDIA NIM',
+        type: 'nvidia',
+        baseUrl: 'https://integrate.api.nvidia.com/v1',
+        description: 'NVIDIA 雲端服務，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Together AI',
+        type: 'together',
+        baseUrl: 'https://api.together.xyz/v1',
+        description: 'Together AI 平台，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'OpenRouter',
+        type: 'openrouter',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        description: 'OpenRouter 聚合平台，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Kilo Gateway',
+        type: 'kilo-gateway',
+        baseUrl: 'https://api.kilo.ai/api/gateway/',
+        description: 'Kilo AI Gateway，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Synthetic (Anthropic-compatible)',
+        type: 'synthetic',
+        baseUrl: 'https://api.synthetic.new/anthropic',
+        description: 'Synthetic AI (Anthropic 相容)，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Moonshot AI (Kimi)',
+        type: 'moonshot',
+        baseUrl: 'https://api.moonshot.ai/v1',
+        description: '月之暗面 Kimi 模型，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Vercel AI Gateway',
+        type: 'vercel-gateway',
+        baseUrl: 'https://gateway.ai.vercel.com/v1/',
+        description: 'Vercel AI Gateway，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Cloudflare AI Gateway',
+        type: 'cloudflare-gateway',
+        baseUrl: 'https://gateway.ai.cloudflare.com/v1/',
+        description: 'Cloudflare AI Gateway，需要 API Key',
+        requiresApiKey: true
+    },
+    {
+        name: 'Ollama Cloud',
+        type: 'ollama-cloud',
+        baseUrl: 'https://ollama.com',
+        description: 'Ollama 雲端服務，無需 API Key',
+        requiresApiKey: false
+    },
+    {
+        name: 'vLLM',
+        type: 'vllm',
+        baseUrl: 'http://127.0.0.1:8000/v1',
+        description: 'vLLM 本地服務，無需 API Key',
+        requiresApiKey: false
+    },
+    {
+        name: 'SGLang',
+        type: 'sglang',
+        baseUrl: 'http://127.0.0.1:30000/v1',
+        description: 'SGLang 本地服務，無需 API Key',
+        requiresApiKey: false
+    },
+    {
+        name: 'LM Studio',
+        type: 'lm-studio',
+        baseUrl: 'http://127.0.0.1:1234/v1',
+        description: 'LM Studio 本地服務，無需 API Key',
+        requiresApiKey: false
+    },
+    {
+        name: 'Customer Provider (自訂)',
         type: 'custom',
-        baseUrl: '',
-        description: '任何支援 OpenAI 規格的 API 終端',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+        description: '企業 Gateway 或自架服務，需要 API Key',
         requiresApiKey: true
     }
 ]
@@ -315,10 +427,11 @@ const App: React.FC = () => {
             console.log('載入模型列表 - type:', providerType, 'apiUrl:', apiUrl)
 
             let models: Array<{ id: string; name: string }> = []
+            const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
 
             try {
-                if (providerType === 'ollama') {
-                    const response = await fetch(`${apiUrl}/api/tags`)
+                if (providerType === 'ollama' || providerType === 'ollama-cloud') {
+                    const response = await fetch(`${cleanApiUrl}/api/tags`)
                     if (response.ok) {
                         const data = await response.json()
                         models = (data.models || []).map((m: any) => ({
@@ -328,6 +441,28 @@ const App: React.FC = () => {
                     } else {
                         throw new Error(`Ollama returned status ${response.status}`)
                     }
+                } else if (providerType === 'anthropic' || providerType === 'synthetic') {
+                    const headers: Record<string, string> = {
+                        'Content-Type': 'application/json',
+                        'anthropic-version': '2023-06-01',
+                        'dangerously-allow-browser': 'true'
+                    }
+                    if (apiKey) {
+                        headers['x-api-key'] = apiKey
+                    }
+                    const response = await fetch(`${cleanApiUrl}/v1/models`, {
+                        method: 'GET',
+                        headers
+                    })
+                    if (response.ok) {
+                        const data = await response.json()
+                        models = (data.data || []).map((m: any) => ({
+                            id: m.id,
+                            name: m.id
+                        }))
+                    } else {
+                        throw new Error(`Anthropic returned status ${response.status}`)
+                    }
                 } else {
                     const headers: Record<string, string> = {
                         'Content-Type': 'application/json'
@@ -335,7 +470,7 @@ const App: React.FC = () => {
                     if (apiKey) {
                         headers['Authorization'] = `Bearer ${apiKey}`
                     }
-                    const response = await fetch(`${apiUrl}/v1/models`, {
+                    const response = await fetch(`${cleanApiUrl}/v1/models`, {
                         method: 'GET',
                         headers
                     })
@@ -358,6 +493,17 @@ const App: React.FC = () => {
                         { id: 'gpt-4-turbo', name: 'gpt-4-turbo' },
                         { id: 'o1-mini', name: 'o1-mini' }
                     ]
+                } else if (providerType === 'anthropic' || providerType === 'synthetic') {
+                    models = [
+                        { id: 'claude-3-5-sonnet-20241022', name: 'claude-3-5-sonnet-20241022' },
+                        { id: 'claude-3-5-haiku-20241022', name: 'claude-3-5-haiku-20241022' },
+                        { id: 'claude-3-opus-20240229', name: 'claude-3-opus-20240229' }
+                    ]
+                } else if (providerType === 'google-gemini') {
+                    models = [
+                        { id: 'gemini-2.5-flash', name: 'gemini-2.5-flash' },
+                        { id: 'gemini-2.5-pro', name: 'gemini-2.5-pro' }
+                    ]
                 } else if (providerType === 'deepseek') {
                     models = [
                         { id: 'deepseek-chat', name: 'deepseek-chat' },
@@ -365,12 +511,39 @@ const App: React.FC = () => {
                     ]
                 } else if (providerType === 'groq') {
                     models = [
-                        { id: 'llama3-70b-8192', name: 'llama-3.1-70b' },
-                        { id: 'llama3-8b-8192', name: 'llama-3.1-8b' },
-                        { id: 'mixtral-8x7b-32768', name: 'mixtral-8x7b' }
+                        { id: 'llama-3.3-70b-versatile', name: 'llama-3.3-70b-versatile' },
+                        { id: 'llama-3.1-8b-instant', name: 'llama-3.1-8b-instant' },
+                        { id: 'mixtral-8x7b-32768', name: 'mixtral-8x7b-32768' }
+                    ]
+                } else if (providerType === 'mistral') {
+                    models = [
+                        { id: 'mistral-large-latest', name: 'mistral-large-latest' },
+                        { id: 'open-mixtral-8x22b', name: 'open-mixtral-8x22b' }
+                    ]
+                } else if (providerType === 'xai-grok') {
+                    models = [
+                        { id: 'grok-2-1212', name: 'grok-2-1212' },
+                        { id: 'grok-2-vision-1212', name: 'grok-2-vision-1212' }
+                    ]
+                } else if (providerType === 'together') {
+                    models = [
+                        { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', name: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
+                        { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', name: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' }
+                    ]
+                } else if (providerType === 'openrouter') {
+                    models = [
+                        { id: 'google/gemini-2.5-pro', name: 'google/gemini-2.5-pro' },
+                        { id: 'meta-llama/llama-3.3-70b-instruct', name: 'meta-llama/llama-3.3-70b-instruct' }
+                    ]
+                } else if (providerType === 'moonshot') {
+                    models = [
+                        { id: 'moonshot-v1-8k', name: 'moonshot-v1-8k' },
+                        { id: 'moonshot-v1-32k', name: 'moonshot-v1-32k' }
                     ]
                 } else {
-                    models = []
+                    models = [
+                        { id: 'local-model', name: 'local-model' }
+                    ]
                 }
             }
 
@@ -1575,7 +1748,7 @@ const App: React.FC = () => {
                                     type: settings.type || 'ollama',
                                     baseUrl: settings.apiUrl || 'http://localhost:11434',
                                     model: settings.model || '',
-                                    requiresApiKey: (settings.type || 'ollama') !== 'ollama'
+                                    requiresApiKey: AVAILABLE_PROVIDERS.find(p => p.type === (settings.type || 'ollama'))?.requiresApiKey ?? true
                                 }}
                                 availableProviders={AVAILABLE_PROVIDERS}
                                 onSave={handleSaveProviderSettings}
