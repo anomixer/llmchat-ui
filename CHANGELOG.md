@@ -4,45 +4,35 @@
 
 ---
 
-### v260603 (2026-06-03)
+### v260602 (2026-06-02)
 
-- 🌐 **優化 GitHub Pages 部署與專案庫重定向**：
-  - 修正了 `Header.tsx` 中的 GitHub 圖示加載路徑，改用相對路徑 `github.svg`，解決部署在 `https://anomixer.github.io/llmchat-ui/` 等二級目錄時圖示 404 的問題。
-  - 將導覽列 GitHub 按鈕與 `README.md` 的一鍵部署按鈕（Vercel, Netlify）連結更正為全新的前端專案庫網址 `https://github.com/anomixer/llmchat-ui`。
-- 🤖 **完整對齊 20+ LLM Provider 與 Anthropic 支援**：
-  - 在 `App.tsx` 的 `AVAILABLE_PROVIDERS` 中補全所有供應商，與母專案 `llmchat` 的 Provider Manager 完整對齊（含 Gemini、Anthropic Claude、Mistral、xAI Grok、OpenRouter、Together、Moonshot 等）。
+- 🚀 **純前端 Serverless 架構全面升級**：直接對齊 `llmchat` 最新版的前端優化與玻璃擬態樣式。全面移除 Node.js/Express 後端，支援以純靜態網頁部署至 Vercel、Netlify、GitHub Pages 等平台。
+- 🗄️ **瀏覽器本地資料持久化 (localStorage)**：
+  - 重構對話管理，將對話歷史儲存從後端伺服器轉移到瀏覽器本地儲存（`llmchat_conversations` 鍵值），支援自動還原儲存時的 timestamp 格式。
+  - 將使用者偏好設定（語系、主題、Token 統計開關等）全數儲存至本地 `llmchat_settings`，刷新網頁立刻載入偏好。
+- ⚡ **前端直連 AI 供應商 API (CORS Ready & Anthropic 支援)**：
+  - 支援在瀏覽器端直接向本地 Ollama 或者是雲端 API (OpenAI, DeepSeek, Groq 等相容規格之 `/v1/chat/completions` 網址) 發送連線。
+  - 改用瀏覽器原生 **AbortController** 中斷連線，在使用者雙擊「停止生成」時直接在客戶端中止 API 請求。
+  - 解析器同時支援並相容 OpenAI SSE 規格、Ollama NDJSON 規格與 Anthropic 原生協定（含 `/v1/messages` 格式與 `content_block_delta` SSE 串流），並特別優化了 DeepSeek R1 思考過程的 `reasoning_content` 即時串流解析與折疊展示。
+  - 在 `App.tsx` 的 `AVAILABLE_PROVIDERS` 中補全所有供應商，與母專案 `llmchat` 的 Provider Manager 完整對齊（包含 Gemini、Anthropic Claude、Mistral、xAI Grok、OpenRouter、Together、Moonshot 等）。
   - 對本地及無金鑰 Provider（Ollama, vLLM, LM Studio 等）動態設定免 API Key，其餘雲端服務則動態驗證 API Key。
-  - 在前端邏輯中整合 Anthropic 協議（包含 `/v1/messages` 格式及 `content_block_delta` SSE 串流解析），支援免後端代理直接連線 Anthropic 與 Synthetic 服務。
   - 新增 API URL `/v1` 容錯清理，自動移除填寫的重複路徑以避免 404 連線錯誤。
-- ⚙️ **顯示禁用的聯網搜尋按鈕**：
-  - 在聊天輸入列中重新顯示地球（聯網搜尋）按鈕以對齊母專案排版。將其設定為禁用並支援滑鼠懸停 tooltip 提示：“💡 純前端版暫不支援自訂聯網搜尋功能”。
-- 🌐 **國際化語系 (i18n) 補全**：
+- 🔧 **整合 API 設定彈窗 (ProviderSettings Modal) 與 5 語系 i18n**：
+  - 在使用者偏好設定選單內新增「配置 API 與模型」按鈕，點擊喚起精美的玻璃擬態彈框進行大模型 API 的對接配置。
+  - 針對瀏覽器直連雲端 API 常遇到的 **CORS 跨來源限制**，加入 **模型清單 Fallback 機制**。當連線檢查或模型載入失敗時，系統會自動載入該供應商的主流模型（如 `gpt-4o`、`deepseek-chat`）以確保使用者能直接連線，且允許手動鍵入任何非清單模型。
+  - 重構 `ProviderSettings.tsx` 中的連線測試機制，改為直接由前端 fetch 網址並回傳連線成功與否，若失敗會提供詳細的 CORS 偵錯建議。
   - 新增並補全了語系字串，使「配置 API 與模型」按鈕、設定標題與 `ProviderSettings.tsx` 中的欄位與提示文字，在五種語言（中/英/日/韓）下皆能正確多國語系化。
+- ⚙️ **顯示禁用的聯網搜尋按鈕**：
+  - 在聊天輸入列中重新顯示地球（聯網搜尋）按鈕以對齊母專案排版。將其設定為禁用並支援滑鼠懸停 tooltip 提示：“💡 純前端版暫不支援自訂聯網搜尋功能”（已翻譯為 5 國語言）。
+- 🌐 **雙語說明 README 與 GitHub Pages 自動部署**：
+  - 簡化 `vite.config.js`，移除了後端服務代理路由 (proxy)。
+  - 將 `.env.example` 改寫為前端預設供應商與模型之變數。
+  - 重構 `README.md` 為英中雙語結構，頂部提供快速跳轉連結，並新增 Vercel/Netlify/GitHub Pages 部署指南與啟用 CORS 跨來源連線（`OLLAMA_ORIGINS=*`）說明。
+  - 修正了 `Header.tsx` 中的 GitHub 圖示路徑為相對路徑，解決子目錄託管環境下的圖示 404 問題，並將導覽列連結與 README 中的一鍵部署連結重定向至最新的前端專案庫 `https://github.com/anomixer/llmchat-ui`。
 - ⚡ **極致編譯效能優化 (Code Splitting & Start Script)**：
   - 配置 `vite.config.js` 的 `manualChunks` 機制，將 `react-markdown` 與 `react-syntax-highlighter` 等重型庫抽離。
   - 首頁主 bundle 從原先的 `1.1MB` 驟降至 `126.67 kB`，消除編譯大型 chunks 警告，大幅改善靜態網站首屏載入速度。
   - 在 `package.json` 中新增 `start` 腳本對應到 `vite` 指令，方便使用者直接執行 `npm start` 啟動本地開發。
-
----
-
-### v260602 (2026-06-02)
-
-- 🚀 **純前端 Serverless 架構全面升級**：直接對齊 `llmchat` 最新版的前端優化與玻璃擬態樣式。全面移除 Node.js/Express 後端，支援以純靜態網頁部署至 Vercel、Netlify 等平台。
-- 🗄️ **瀏覽器本地資料持久化 (localStorage)**：
-  - 重構對話管理，將對話歷史儲存從後端伺服器轉移到瀏覽器本地儲存（`llmchat_conversations` 鍵值），支援自動還原儲存時的 timestamp 格式。
-  - 將使用者偏好設定（語系、主題、Token 統計開關等）全數儲存至本地 `llmchat_settings`，刷新網頁立刻載入偏好。
-- ⚡ **前端直連 AI 供應商 API (CORS Ready)**：
-  - 支援在瀏覽器端直接向本地 Ollama 或者是雲端 API (OpenAI, DeepSeek, Groq 等相容規格之 `/v1/chat/completions` 網址) 發送連線。
-  - 改用瀏覽器原生 **AbortController** 中斷連線，在使用者雙擊「停止生成」時直接在客戶端中止 API 請求。
-  - 解析器同時支援並相容 OpenAI SSE 規格及 Ollama NDJSON 規格，並特別優化了 DeepSeek R1 思考過程的 `reasoning_content` 即時串流解析與折疊展示。
-- 🔧 **整合 API 設定彈窗 (ProviderSettings Modal)**：
-  - 在使用者偏好設定選單內新增「配置 API 與模型」按鈕，點擊喚起精美的玻璃擬態彈框進行大模型 API 的對接配置。
-  - 針對瀏覽器直連雲端 API 常遇到的 **CORS 跨來源限制**，加入 **模型清單 Fallback 機制**。當連線檢查或模型載入失敗時，系統會自動載入該供應商的主流模型（如 `gpt-4o`、`deepseek-chat`）以確保使用者能直接連線，且允許手動鍵入任何非清單模型。
-  - 重構 `ProviderSettings.tsx` 中的連線測試機制，改為直接由前端 fetch 網址並回傳連線成功與否，若失敗會提供詳細的 CORS 偵錯建議。
-- 🌐 **雙語說明 README 與簡化設定**：
-  - 簡化 `vite.config.js`，移除了後端服務代理路由 (proxy)。
-  - 將 `.env.example` 改寫為前端預設供應商與模型之變數。
-  - 重構 `README.md` 為英中雙語結構，頂部提供快速跳轉連結，並新增 Vercel/Netlify 部署指南與啟用 CORS 跨來源連線（`OLLAMA_ORIGINS=*`）說明。
 
 ---
 
