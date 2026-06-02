@@ -167,7 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
                             <div className="py-2">
                                 {/* View on GitHub */}
                                 <a
-                                    href="https://github.com/anomixer/llmchat"
+                                    href="https://github.com/anomixer/llmchat-ui"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className={`flex items-center space-x-3 px-4 py-2 text-sm transition-colors ${isDarkMode
@@ -348,7 +348,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center space-x-2">
                     {/* GitHub 連結 */}
                     <a
-                        href="https://github.com/anomixer/llmchat"
+                        href="https://github.com/anomixer/llmchat-ui"
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`p-1 rounded transition-colors ${isDarkMode
