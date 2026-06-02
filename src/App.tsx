@@ -1524,8 +1524,8 @@ const App: React.FC = () => {
                                     )}
 
                                     {message.role === 'assistant' && message.tokenCount !== undefined && settings.showTokenStats && (
-                                        <div className={`mt-2 text-xs font-mono transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                            <span className="inline-block px-2 py-1 rounded-sm bg-gray-100 dark:bg-gray-700">
+                                        <div className="mt-2 text-xs font-mono transition-colors">
+                                            <span className="inline-block px-2 py-1 rounded-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                                                 {message.tokenCount} tokens | {(message.tokensPerSecond || 0).toFixed(2)} tokens/s
                                             </span>
                                         </div>
@@ -1594,8 +1594,8 @@ const App: React.FC = () => {
                                 )}
 
                                 {settings.showTokenStats && (
-                                    <div className={`mt-2 text-xs font-mono transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                        <span className="inline-block px-2 py-1 rounded-sm bg-gray-100 dark:bg-gray-700">
+                                    <div className="mt-2 text-xs font-mono transition-colors">
+                                        <span className="inline-block px-2 py-1 rounded-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                                             {tokenCount} tokens | {tokensPerSecond.toFixed(2)} tokens/s
                                         </span>
                                     </div>

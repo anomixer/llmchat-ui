@@ -10,7 +10,9 @@
 - 🗄️ **瀏覽器本地資料持久化 (localStorage)**：
   - 重構對話管理，將對話歷史儲存從後端伺服器轉移到瀏覽器本地儲存（`llmchat_conversations` 鍵值），支援自動還原儲存時的 timestamp 格式。
   - 將使用者偏好設定（語系、主題、Token 統計開關等）全數儲存至本地 `llmchat_settings`，刷新網頁立刻載入偏好。
-  - 優化了亮色模式 (Light Mode) 下 Token 統計數據的文字對比度，將 `text-gray-500` 提升至 `text-gray-600`，解決淺色背景下不易閱讀的問題。
+  - 修正了主題模式衝突所導致的 Token 統計數據對比度問題：
+    1. 在 `tailwind.config.js` 中加入了 `darkMode: 'class'` 設置，避免當系統/瀏覽器開啟深色模式但應用配置為亮色模式時，Tailwind 強制啟用 `dark:` 樣式（進而將 Token 統計底色渲染為深灰色）所造成的混亂。
+    2. 將 `text-gray-600` 與 `dark:text-gray-300` 直接顯式綁定在 Token 統計數據 span 上，確保在亮色與深色模式下均有清晰的對比度。
 - ⚡ **前端直連 AI 供應商 API (CORS Ready & Anthropic 支援)**：
   - 支援在瀏覽器端直接向本地 Ollama 或者是雲端 API (OpenAI, DeepSeek, Groq 等相容規格之 `/v1/chat/completions` 網址) 發送連線。
   - 改用瀏覽器原生 **AbortController** 中斷連線，在使用者雙擊「停止生成」時直接在客戶端中止 API 請求。
