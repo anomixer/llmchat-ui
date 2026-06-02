@@ -128,3 +128,48 @@ LLMChat-UI 是一個純前端架構的應用程式。本文件詳細記錄了應
    ```
    data: {"choices": [{"delta": {"reasoning_content": "分析用戶問題..."}}]}
    ```
+
+---
+
+## 🦉 3. Anthropic Claude API 規格 (原生直連)
+
+當供應商類型設定為 `anthropic` 或 `synthetic` 時，前端將直接與 Anthropic 規格的端點進行通訊。
+
+### 獲取可用模型列表
+- **端點**: `GET {baseUrl}/v1/models`
+- **標頭**:
+  - `x-api-key: {apiKey}`
+  - `anthropic-version: 2023-06-01`
+  - `dangerously-allow-browser: true`
+
+### 發送對話請求 (串流)
+- **端點**: `POST {baseUrl}/v1/messages`
+- **標頭**:
+  - `Content-Type: application/json`
+  - `x-api-key: {apiKey}` (若設定金鑰)
+  - `anthropic-version: 2023-06-01`
+  - `dangerously-allow-browser: true` (允許前端直接請求，避免某些客戶端阻擋)
+- **請求參數 (JSON)**:
+  ```json
+  {
+    "model": "claude-3-5-sonnet-20241022",
+    "system": "你是一個有用的AI助手，請用繁體中文回答用戶的問題。",
+    "messages": [
+      { "role": "user", "content": "Hello" }
+    ],
+    "max_tokens": 4096,
+    "stream": true
+  }
+  ```
+- **響應格式 (SSE)**:
+  Anthropic 串流採用事件標籤，前端串流解析器會提取事件中包含的文字增量：
+  ```
+  event: message_start
+  data: {"type": "message_start", ...}
+
+  event: content_block_start
+  data: {"type": "content_block_start", ...}
+
+  event: content_block_delta
+  data: {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "Hello"}}
+  ```

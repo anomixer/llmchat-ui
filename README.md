@@ -73,6 +73,11 @@ Because LLMChat-UI runs entirely in the browser, direct cloud API connections (e
 2. Connect your GitHub repository.
 3. Deploy! The project's `netlify.toml` will be automatically loaded to configure build settings and SPA redirects.
 
+#### GitHub Pages
+1. Push your code to the `main` branch.
+2. The GitHub Action in `.github/workflows/deploy.yml` will automatically build the site and deploy it to the `gh-pages` branch.
+3. Go to Repository Settings -> Pages, and set the build source to the `gh-pages` branch.
+
 ---
 
 ## 中文說明
@@ -139,3 +144,8 @@ npm run dev
 1. 註冊並登入 [netlify.com](https://netlify.com)。
 2. 匯入您的 GitHub 專案。
 3. 點選 Deploy，Netlify 將自動讀取專案中的 `netlify.toml` 設定檔，套用預設的靜態網站與 SPA 路由重定向配置進行發佈。
+
+#### GitHub Pages 部署
+1. 將代碼推送至 `main` 分支。
+2. 專案中已配置 `.github/workflows/deploy.yml` 工作流，GitHub Actions 會自動執行編譯並發佈至 `gh-pages` 分支。
+3. 前往 GitHub 專案設定 -> Pages，將來源分支設定為 `gh-pages` 即可完成部署與開啟線上 demo。
