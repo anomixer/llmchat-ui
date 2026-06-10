@@ -310,7 +310,7 @@
             "testSuccess": "✅ 連接成功",
             "testFailed": "❌ 連接失敗",
             "testError": "❌ 連接錯誤：",
-            "corsHint": "請確認 API URL 是否正確、伺服器已啟動，並已開啟 CORS 跨來源連線（例如 Ollama 需設定 OLLAMA_ORIGINS=*）。",
+            "corsHint": "請確認 API URL 是否正確、伺服器已啟動，並已開啟 CORS 跨來源連線（例如 Ollama 需設定 OLLAMA_ORIGINS=*），或是否有其他干擾的瀏覽器擴充功能（如 Page Assist）在執行。",
             "unauthorizedHint": "API Key 無效或授權錯誤 (401)",
             "statusCodeHint": "伺服器回應狀態碼 {{status}}"
         }

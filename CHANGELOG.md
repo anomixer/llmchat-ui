@@ -4,6 +4,18 @@
 
 ---
 
+### v260611 (2026-06-11)
+
+- 🌐 **優化本地與遠端大模型 (Ollama, LM Studio 等) 的連線與 CORS 相容性**：
+  - **移除了 GET 請求中不必要的 Content-Type 標頭**：在連線檢查與獲取模型列表的 `GET` 請求中移除 `'Content-Type': 'application/json'`。這使得無金鑰的本地或遠端伺服器請求能作為 CORS 的「簡單請求」發送，成功避免被 Cloudflare WAF 或代理伺服器安全規則阻擋而導致連線失敗。
+  - **新增 X-Requested-With 標頭解決瀏覽器不送 Origin 的問題**：在無金鑰本機/遠端大模型 `GET` 請求中加入 `'X-Requested-With': 'XMLHttpRequest'` 自訂標頭。這會強制瀏覽器送出 `OPTIONS` 預檢請求，並確保發送正確的 `Origin: http://localhost:3000` 標頭，從而使 Ollama / Cloudflare 順利返回 CORS 跨來源放行回應。
+  - **支援 Ollama 走 OpenAI 相容端點**：當選用 Ollama 且 API 網址設定以 `/v1` 結尾時（例如 `https://ollama.johantw.qzz.io/v1`），系統將自動選用 OpenAI 相容端點（`/v1/models` 與 `/v1/chat/completions`）進行通訊，以適應僅轉發 `/v1` 路徑的遠端反向代理；而無 `/v1` 時則維持原生 Ollama API 以確保向下相容性。
+  - **惠及所有本地大模型伺服器**：LM Studio、vLLM、SGLang 等其他本地伺服器在無密鑰連線時，亦受惠於 GET CORS 預檢優化，連線與使用更為流暢。
+  - **文件提示新增**：於 `README.md` 中新增針對 Page Assist 等瀏覽器插件的詳細衝突排除指南。詳細說明 Page Assist 插件如何在一般模式下自動攔截發往 Ollama 的請求並重寫 `Origin` 標頭為目標主機，從而導致瀏覽器 CORS 機制失敗並阻擋回應（顯示 `net::ERR_CONNECTION_REFUSED` 或 CORS Header 缺失）的底層原因與排除方法。
+  - **錯誤提示優化**：在五國語系 (中/英/日/韓) 的 API 連線測試失敗錯誤提示 (`corsHint`) 中，主動補充檢查是否執行干擾之擴充功能 (如 Page Assist) 的提示，提升使用者的排查效率。
+
+---
+
 ### v260602 (2026-06-02)
 
 - 🚀 **純前端 Serverless 架構全面升級**：直接對齊 `llmchat` 最新版的前端優化與玻璃擬態樣式。全面移除 Node.js/Express 後端，支援以純靜態網頁部署至 Vercel、Netlify、GitHub Pages 等平台。

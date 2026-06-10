@@ -308,7 +308,7 @@
             "testSuccess": "✅ 连接成功",
             "testFailed": "❌ 连接失败",
             "testError": "❌ 连接错误：",
-            "corsHint": "请确认 API URL 是否正确、服务器已启动，并已开启 CORS 跨来源连接（例如 Ollama 需设置 OLLAMA_ORIGINS=*）。",
+            "corsHint": "请确认 API URL 是否正确、服务器已启动，并已开启 CORS 跨来源连接（例如 Ollama 需设置 OLLAMA_ORIGINS=*），或是否有其他干扰的浏览器扩展（如 Page Assist）在运行。",
             "unauthorizedHint": "API Key 无效或授权错误 (401)",
             "statusCodeHint": "服务器回应状态码 {{status}}"
         }

@@ -169,7 +169,10 @@ export function useChatStreaming() {
 
             let response: Response
 
-            if (providerType === 'ollama' || providerType === 'ollama-cloud') {
+            const isOllama = providerType === 'ollama' || providerType === 'ollama-cloud'
+            const isOllamaNative = isOllama && !apiUrl.includes('/v1')
+
+            if (isOllamaNative) {
                 // Clean base64 prefixes from images if present
                 const cleanBase64 = (dataUrl: string) => {
                     const commaIndex = dataUrl.indexOf(',')

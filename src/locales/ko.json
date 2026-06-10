@@ -307,7 +307,7 @@
             "testSuccess": "✅ 연결에 성공했습니다",
             "testFailed": "❌ 연결에 실패했습니다",
             "testError": "❌ 연결 오류: ",
-            "corsHint": "API URL이 올바른지, 서버가 실행 중인지, CORS 교차 출처 연결이 활성화되어 있는지 확인하십시오 (예: Ollama의 경우 OLLAMA_ORIGINS=* 설정 필요).",
+            "corsHint": "API URL이 올바른지, 서버가 실행 중인지, CORS 교차 출처 연결이 활성화되어 있는지 확인하십시오 (예: Ollama의 경우 OLLAMA_ORIGINS=* 설정 필요). 또는 Page Assist와 같이 간섭하는 브라우저 확장 프로그램이 실행 중인지 확인하십시오.",
             "unauthorizedHint": "API 키가 올바르지 않거나 인증 오류가 발생했습니다 (401)",
             "statusCodeHint": "서버가 상태 코드 {{status}}를 반환했습니다"
         }

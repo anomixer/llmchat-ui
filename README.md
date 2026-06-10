@@ -63,6 +63,13 @@ Because LLMChat-UI runs entirely in the browser, direct cloud API connections (e
 2. You run a local CORS reverse-proxy for cloud APIs.
 3. You configure your own proxy server endpoint in settings.
 
+*Tip: For remote Ollama servers behind reverse proxies, you can specify the `/v1` endpoint in the API URL (e.g., `https://your-ollama-host/v1`). The client will automatically fall back to using OpenAI-compatible endpoints (`/v1/models` and `/v1/chat/completions`) which are highly compatible with CORS and reverse proxy path routing.*
+
+> [!WARNING]
+> **Conflict with "Page Assist" and other Ollama Web UI extensions:**
+> If you have extensions like [Page Assist](https://chromewebstore.google.com/detail/page-assist-a-web-ui-for/jfgfiigpkhlkbnfnbobbkinehhfdhndo) installed and enabled, they may intercept all API requests targeting Ollama. In Chrome's standard mode, this interception rewrites the `Origin` header to match the target host, tricking the server but causing Chrome to block the response with CORS errors (`net::ERR_CONNECTION_REFUSED` or missing headers). 
+> **To resolve this, please temporarily disable Page Assist or configure it to ignore your custom Ollama domains, or run the browser in Incognito mode / Firefox.** *(A diagnostic warning is also displayed directly in the connection error message to assist you.)*
+
 ### ☁️ Cloud Deployments
 
 #### Vercel
@@ -136,6 +143,13 @@ npm run dev
 由於本專案為純前端應用：
 1. **本地執行 Ollama**：在本地調用 Ollama 時，必須確保設定環境變數 `OLLAMA_ORIGINS="*"` 啟動，否則瀏覽器會因跨來源請求 (CORS) 阻擋連線。
 2. **雲端 API 密鑰**：若直接在瀏覽器打 OpenAI 或 DeepSeek 的雲端 API，請確認您的網路環境能繞過 CORS，或使用反向代理伺服器（CORS Proxy）以轉發請求。密鑰將儲存在您的本機網頁快取中，不會上傳到任何第三方伺服器。
+
+*提示：對於位於反向代理/防護牆（如 Cloudflare WAF）後方的遠端 Ollama 伺服器，若在網址中填寫 `/v1` 結尾（如 `https://your-ollama-host/v1`），客戶端會自動切換為 OpenAI 相容協定（`/v1/models` 與 `/v1/chat/completions`）。這能完美配合只允許轉發 `/v1` 路徑的代理伺服器，並避免 native API 的跨網域與 WAF 阻擋問題。*
+
+> [!WARNING]
+> **與 Page Assist 等 Ollama 瀏覽器插件的相衝突問題：**
+> 若您安裝並啟用了 [Page Assist](https://chromewebstore.google.com/detail/page-assist-a-web-ui-for/jfgfiigpkhlkbnfnbobbkinehhfdhndo) 等 Ollama 網頁輔助插件，它們會在 Chrome 一般模式下自動攔截所有發往 Ollama 的請求。此攔截機制會將請求的 `Origin` 標頭竄改為目標主機，雖然騙過了伺服器端，但會導致瀏覽器本身以 CORS 安全錯誤阻擋回應（顯示 `net::ERR_CONNECTION_REFUSED` 或 CORS Header 缺失）。
+> **解決方法：請暫時停用 Page Assist 插件、將您的自訂 Ollama 網域加入排除名單，或者改用無痕模式/無安裝該插件的瀏覽器（如 Firefox）進行測試。** *(在 API 連線測試失敗時，系統也會在錯誤訊息中提供此項診斷提示，方便您快速定位問題。)*
 
 ### ☁️ 部署說明
 

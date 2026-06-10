@@ -430,12 +430,15 @@ const App: React.FC = () => {
             const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
 
             try {
-                if (providerType === 'ollama' || providerType === 'ollama-cloud') {
-                    const headers: Record<string, string> = {
-                        'Content-Type': 'application/json'
-                    }
+                const isOllama = providerType === 'ollama' || providerType === 'ollama-cloud'
+                const isOllamaNative = isOllama && !apiUrl.includes('/v1')
+
+                if (isOllamaNative) {
+                    const headers: Record<string, string> = {}
                     if (apiKey) {
                         headers['Authorization'] = `Bearer ${apiKey}`
+                    } else {
+                        headers['X-Requested-With'] = 'XMLHttpRequest'
                     }
                     const response = await fetch(`${cleanApiUrl}/api/tags`, {
                         method: 'GET',
@@ -452,7 +455,6 @@ const App: React.FC = () => {
                     }
                 } else if (providerType === 'anthropic' || providerType === 'synthetic') {
                     const headers: Record<string, string> = {
-                        'Content-Type': 'application/json',
                         'anthropic-version': '2023-06-01',
                         'dangerously-allow-browser': 'true'
                     }
@@ -473,11 +475,11 @@ const App: React.FC = () => {
                         throw new Error(`Anthropic returned status ${response.status}`)
                     }
                 } else {
-                    const headers: Record<string, string> = {
-                        'Content-Type': 'application/json'
-                    }
+                    const headers: Record<string, string> = {}
                     if (apiKey) {
                         headers['Authorization'] = `Bearer ${apiKey}`
+                    } else {
+                        headers['X-Requested-With'] = 'XMLHttpRequest'
                     }
                     const response = await fetch(`${cleanApiUrl}/v1/models`, {
                         method: 'GET',

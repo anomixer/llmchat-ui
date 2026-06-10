@@ -307,7 +307,7 @@
             "testSuccess": "✅ Connection successful",
             "testFailed": "❌ Connection failed",
             "testError": "❌ Connection error: ",
-            "corsHint": "Please verify your API URL, ensure the server is running, and CORS is enabled (e.g. set OLLAMA_ORIGINS=* for Ollama).",
+            "corsHint": "Please verify your API URL, ensure the server is running, and CORS is enabled (e.g. set OLLAMA_ORIGINS=* for Ollama), or check if there are any conflicting browser extensions (e.g. Page Assist) running.",
             "unauthorizedHint": "Invalid API Key or authorization error (401)",
             "statusCodeHint": "Server responded with status code {{status}}"
         }

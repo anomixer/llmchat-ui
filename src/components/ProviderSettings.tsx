@@ -72,12 +72,15 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
 
         try {
             const cleanBaseUrl = baseUrl.replace(/\/v1\/?$/, '')
-            if (selectedProvider.type === 'ollama' || selectedProvider.type === 'ollama-cloud') {
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json'
-                }
+            const isOllama = selectedProvider.type === 'ollama' || selectedProvider.type === 'ollama-cloud'
+            const isOllamaNative = isOllama && !baseUrl.includes('/v1')
+
+            if (isOllamaNative) {
+                const headers: Record<string, string> = {}
                 if (apiKey) {
                     headers['Authorization'] = `Bearer ${apiKey}`
+                } else {
+                    headers['X-Requested-With'] = 'XMLHttpRequest'
                 }
                 const response = await fetch(`${cleanBaseUrl}/api/tags`, {
                     method: 'GET',
@@ -91,9 +94,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                     setConnectionMessage(`${t('admin.llm.testFailed')}：${t('admin.llm.statusCodeHint', { status: response.status })}`)
                 }
             } else {
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json'
-                }
+                const headers: Record<string, string> = {}
                 if (selectedProvider.type === 'anthropic' || selectedProvider.type === 'synthetic') {
                     headers['anthropic-version'] = '2023-06-01'
                     headers['dangerously-allow-browser'] = 'true'
@@ -103,6 +104,8 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                 } else {
                     if (apiKey) {
                         headers['Authorization'] = `Bearer ${apiKey}`
+                    } else {
+                        headers['X-Requested-With'] = 'XMLHttpRequest'
                     }
                 }
                 const response = await fetch(`${cleanBaseUrl}/v1/models`, {
@@ -136,13 +139,15 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
         try {
             const cleanApiUrl = baseUrl.replace(/\/v1\/?$/, '')
             let modelsList: string[] = []
+            const isOllama = selectedProvider.type === 'ollama' || selectedProvider.type === 'ollama-cloud'
+            const isOllamaNative = isOllama && !baseUrl.includes('/v1')
 
-            if (selectedProvider.type === 'ollama' || selectedProvider.type === 'ollama-cloud') {
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json'
-                }
+            if (isOllamaNative) {
+                const headers: Record<string, string> = {}
                 if (apiKey) {
                     headers['Authorization'] = `Bearer ${apiKey}`
+                } else {
+                    headers['X-Requested-With'] = 'XMLHttpRequest'
                 }
                 const response = await fetch(`${cleanApiUrl}/api/tags`, {
                     method: 'GET',
@@ -156,7 +161,6 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                 }
             } else if (selectedProvider.type === 'anthropic' || selectedProvider.type === 'synthetic') {
                 const headers: Record<string, string> = {
-                    'Content-Type': 'application/json',
                     'anthropic-version': '2023-06-01',
                     'dangerously-allow-browser': 'true'
                 }
@@ -174,11 +178,11 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                     throw new Error(`Status ${response.status}`)
                 }
             } else {
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json'
-                }
+                const headers: Record<string, string> = {}
                 if (apiKey) {
                     headers['Authorization'] = `Bearer ${apiKey}`
+                } else {
+                    headers['X-Requested-With'] = 'XMLHttpRequest'
                 }
                 const response = await fetch(`${cleanApiUrl}/v1/models`, {
                     method: 'GET',
