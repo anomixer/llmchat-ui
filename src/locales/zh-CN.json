@@ -1,6 +1,6 @@
 {
     "app": {
-        "loading": "加载中...",
+        "loading": "载入中...",
         "welcome": {
             "title": "开始与 AI 对话吧！",
             "subtitle": "输入或说出您的问题，我会尽力为您回答。",
@@ -25,7 +25,8 @@
             "button": "导出对话",
             "json": "导出为 JSON",
             "markdown": "导出为 Markdown"
-        }
+        },
+        "newTitle": "对话 {{count}}"
     },
     "buttons": {
         "send": "发送消息",
@@ -57,7 +58,10 @@
         "github": "在 GitHub 上查看",
         "menu": "菜单",
         "adminBadge": "管理员",
-        "adminButton": "用户管理"
+        "adminButton": "用户管理",
+        "clearConfirm": "确定要清除所有对话与设置吗？此动作将重置整个应用程序。",
+        "clearCache": "清除缓存并重置",
+        "clearCacheTooltip": "清除缓存与重置应用程序"
     },
     "settings": {
         "configureApiAndModel": "配置 API 与模型",
@@ -160,8 +164,11 @@
             "button": "附加文件 (支持图片、文字、PDF、JSON，最大50MB)",
             "sizeError": "文件 {{name}} 太大，请选择小于 50MB 的文件",
             "typeError": "文件类型 {{type}} 不支持",
-            "pdfNote": "注意：PDF内容无法在浏览器中直接解析。如需分析PDF内容，请考虑将PDF转换为文字文件后上传，或使用支持PDF解析的服务。"
-        }
+            "pdfNote": "注意：PDF内容无法在浏览器中直接解析。如需分析PDF内容，请考虑将PDF转换为文字文件后上传，或使用支持PDF解析的服务。",
+            "pdfFile": "PDF文件",
+            "attachedFiles": "附加文件"
+        },
+        "placeholderMobile": "输入讯息..."
     },
     "auth": {
         "welcome": "欢迎使用 LLMChat",
@@ -303,15 +310,128 @@
             "testAndSave": "测试与储存 Provider",
             "saveSuccess": "✅ 设置已保存",
             "saveWarning": "⚠️ 设置已保存，但连接失败",
-            "saveError": "❌ 保存失败",
+            "saveError": "保存失败",
             "current": "当前",
             "testSuccess": "✅ 连接成功",
             "testFailed": "❌ 连接失败",
             "testError": "❌ 连接错误：",
             "corsHint": "请确认 API URL 是否正确、服务器已启动，并已开启 CORS 跨来源连接（例如 Ollama 需设置 OLLAMA_ORIGINS=*），或是否有其他干扰的浏览器扩展（如 Page Assist）在运行。",
             "unauthorizedHint": "API Key 无效或授权错误 (401)",
-            "statusCodeHint": "服务器回应状态码 {{status}}"
+            "statusCodeHint": "服务器回应状态码 {{status}}",
+            "advancedParams": "进阶参数",
+            "visionModelPlaceholder": "若需专用模型请输入，否则留空",
+            "visionModelSameAsText": "同上方文字模型 (若支持多模态)",
+            "githubOauthMissingId": "请先输入 GitHub OAuth App 的 Client ID！",
+            "githubOauthInitFailed": "初始化 OAuth 流程失败，请再试一次。",
+            "fetchModelsEmpty": "未能获取任何可用模型",
+            "fetchModelsFailed": "获取模型失败，请检查 API 设置与 CORS 限制。",
+            "githubOauthTitle": "GitHub OAuth 快速登录",
+            "githubOauthDesc1": "您可以透过自己注册的 GitHub OAuth App 进行登录以自动获取 Token（回调网址需设定为",
+            "githubOauthDesc2": "，且不需设定 Client Secret）。",
+            "githubOauthIdPlaceholder": "例如: Ov23wx...",
+            "githubOauthLogin": "登录授权",
+            "githubManualTitle": "手动建立方式：",
+            "githubManualDesc": "您可以至 GitHub 帐号设置的 Developer Settings -> Personal Access Tokens 建立一个 classic 令牌，并至少勾选 ",
+            "githubManualDesc2": " 权限，然后直接在上方 API Key 栏位贴上该 ghp_... 令牌即可。",
+            "githubOauthSuccess": "GitHub OAuth 登录成功！已成功获取 Access Token。",
+            "githubOauthError": "OAuth 兑换错误",
+            "githubOauthServerError": "OAuth 兑换错误，请确认您的 GitHub App 设置，或改用手动输入 Token。",
+            "githubOauthCorsError": "OAuth 服务器连线失败 (状态码 {{status}})，请确认跨来源连线 (CORS) 设置。",
+            "githubOauthException": "OAuth Token 兑换时发生异常: {{msg}}。\n提醒：GitHub 默认可能不允许浏览器端直接进行 CORS 请求。若遇到 CORS 阻挡，您可以直接建立并手动贴上 GitHub 个人访问令牌 (PAT)。"
         }
     },
-    "systemPrompt": "你是一个有用的AI助手，请用简体中文回答用户的问题。"
+    "systemPrompt": "你是一个有用的AI助手，请用简体中文回答用户的问题。",
+    "providers": {
+        "openai": {
+            "name": "OpenAI",
+            "description": "GPT-4, GPT-3.5 等模型"
+        },
+        "anthropic": {
+            "name": "Anthropic Claude",
+            "description": "Claude 系列模型"
+        },
+        "google-gemini": {
+            "name": "Google Gemini",
+            "description": "Gemini 系列模型"
+        },
+        "mistral": {
+            "name": "Mistral",
+            "description": "Mistral 系列模型"
+        },
+        "groq": {
+            "name": "Groq",
+            "description": "高速推理引擎"
+        },
+        "xai-grok": {
+            "name": "xAI (Grok)",
+            "description": "xAI Grok 系列模型"
+        },
+        "github-models": {
+            "name": "GitHub Models",
+            "description": "GitHub Marketplace 提供的 AI 模型 (支持 OAuth 登录)"
+        },
+        "deepseek": {
+            "name": "DeepSeek",
+            "description": "DeepSeek-V3, DeepSeek-R1 推理模型"
+        },
+        "nvidia": {
+            "name": "NVIDIA NIM",
+            "description": "NVIDIA 云端 NIM 推理服务"
+        },
+        "together": {
+            "name": "Together AI",
+            "description": "Together AI 平台"
+        },
+        "openrouter": {
+            "name": "OpenRouter",
+            "description": "OpenRouter 多模型聚合路由平台"
+        },
+        "kilo-gateway": {
+            "name": "Kilo Gateway",
+            "description": "Kilo AI Gateway 企业路由"
+        },
+        "synthetic": {
+            "name": "Synthetic (Anthropic-compatible)",
+            "description": "Synthetic AI (Anthropic 格式兼容)"
+        },
+        "moonshot": {
+            "name": "Moonshot AI (Kimi)",
+            "description": "月之暗面 Kimi 系列模型（全球版）"
+        },
+        "vercel-gateway": {
+            "name": "Vercel AI Gateway",
+            "description": "Vercel AI Gateway 统一路由"
+        },
+        "cloudflare-gateway": {
+            "name": "Cloudflare AI Gateway",
+            "description": "Cloudflare AI Gateway 统一路由"
+        },
+        "ollama-cloud": {
+            "name": "Ollama Cloud",
+            "description": "Ollama Cloud 官方服务（需要 API Key）"
+        },
+        "ollama": {
+            "name": "Ollama",
+            "description": "本地 Ollama 服务（支持 llama, qwen, deepseek 等）"
+        },
+        "vllm": {
+            "name": "vLLM",
+            "description": "vLLM 高性能本地推理服务"
+        },
+        "sglang": {
+            "name": "SGLang",
+            "description": "SGLang 本地推理服务"
+        },
+        "lm-studio": {
+            "name": "LM Studio",
+            "description": "LM Studio 本地 GUI 推理服务"
+        },
+        "custom": {
+            "name": "Custom Provider (自定义)",
+            "description": "企业 Gateway 或自建 OpenAI 兼容服务"
+        }
+    },
+    "chat": {
+        "stopConfirm": "再按一次停止生成"
+    }
 }

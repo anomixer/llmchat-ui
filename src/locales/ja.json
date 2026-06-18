@@ -25,7 +25,8 @@
             "button": "会話をエクスポート",
             "json": "JSONとしてエクスポート",
             "markdown": "Markdownとしてエクスポート"
-        }
+        },
+        "newTitle": "チャット {{count}}"
     },
     "buttons": {
         "send": "メッセージを送信",
@@ -57,7 +58,10 @@
         "github": "GitHubで表示",
         "menu": "メニュー",
         "adminBadge": "管理者",
-        "adminButton": "ユーザー管理"
+        "adminButton": "ユーザー管理",
+        "clearConfirm": "すべての会話と設定をクリアしてもよろしいですか？この操作により、アプリケーション全体がリセットされます。",
+        "clearCache": "キャッシュをクリアしてリセット",
+        "clearCacheTooltip": "キャッシュをクリアしてアプリケーションをリセット"
     },
     "settings": {
         "configureApiAndModel": "API とモデルの構成",
@@ -159,8 +163,11 @@
         "files": {
             "button": "ファイルを添付 (画像、テキスト、PDF、JSONをサポート、最大50MB)",
             "sizeError": "ファイル {{name}} が大きすぎます。50MB未満のファイルを選択してください",
-            "typeError": "ファイルタイプ {{type}} はサポートされていません"
-        }
+            "typeError": "ファイルタイプ {{type}} はサポートされていません",
+            "pdfFile": "PDFファイル",
+            "attachedFiles": "添付ファイル"
+        },
+        "placeholderMobile": "メッセージを入力..."
     },
     "auth": {
         "welcome": "LLMChatへようこそ",
@@ -302,15 +309,128 @@
             "testAndSave": "プロバイダーをテストして保存",
             "saveSuccess": "✅ 設定を保存しました",
             "saveWarning": "⚠️ 設定は保存されましたが、接続に失敗しました",
-            "saveError": "❌ 保存に失敗しました",
+            "saveError": "保存に失敗しました",
             "current": "現在",
             "testSuccess": "✅ 接続に成功しました",
             "testFailed": "❌ 接続に失敗しました",
             "testError": "❌ 接続エラー： ",
             "corsHint": "API URLが正しいこと、サーバーが起動していること、およびCORSクロスドメイン接続が有効になっていることを確認してください（例：OllamaではOLLAMA_ORIGINS=*を設定する必要があります）。または、Page Assistなどの干渉するブラウザ拡張機能が実行されていないか確認してください。",
             "unauthorizedHint": "APIキーが無効、または認証エラーです (401)",
-            "statusCodeHint": "サーバーがステータスコード {{status}} を返しました"
+            "statusCodeHint": "サーバーがステータスコード {{status}} を返しました",
+            "advancedParams": "高度なパラメータ",
+            "visionModelPlaceholder": "専用モデルが必要な場合は入力し、それ以外は空白のままにしてください",
+            "visionModelSameAsText": "上記のテキストモデルと同じ（マルチモーダル対応の場合）",
+            "githubOauthMissingId": "まず GitHub OAuth アプリの Client ID を入力してください！",
+            "githubOauthInitFailed": "OAuth フローの初期化に失敗しました。もう一度お試しください。",
+            "fetchModelsEmpty": "利用可能なモデルを取得できませんでした",
+            "fetchModelsFailed": "モデルの取得に失敗しました。API設定とCORS制限を確認してください。",
+            "githubOauthTitle": "GitHub OAuth クイックログイン",
+            "githubOauthDesc1": "登録済みの GitHub OAuth アプリを使用してログインし、トークンを自動取得できます（コールバックURLは",
+            "githubOauthDesc2": "に設定し、Client Secretは不要です）。",
+            "githubOauthIdPlaceholder": "例: Ov23wx...",
+            "githubOauthLogin": "ログイン認証",
+            "githubManualTitle": "手動作成方法：",
+            "githubManualDesc": "GitHubのDeveloper Settings -> Personal Access Tokensで、少なくとも",
+            "githubManualDesc2": "の権限を持つclassicトークンを作成し、上のAPI Keyフィールドに ghp_... トークンを貼り付けてください。",
+            "githubOauthSuccess": "GitHub OAuthログイン成功！アクセストークンを取得しました。",
+            "githubOauthError": "OAuth交換エラー",
+            "githubOauthServerError": "OAuth交換エラー。GitHubアプリの設定を確認するか、トークンを手動で入力してください。",
+            "githubOauthCorsError": "OAuthサーバー接続失敗（ステータス {{status}}）。CORS設定を確認してください。",
+            "githubOauthException": "OAuthトークン交換の例外: {{msg}}。\n注: GitHubのデフォルトでは、ブラウザからの直接のCORSリクエストは許可されない場合があります。CORSでブロックされる場合は、GitHubの個人アクセストークン(PAT)を手動で作成して貼り付けることができます。"
         }
     },
-    "systemPrompt": "あなたは役立つAIアシスタントです。ユーザーの質問に日本語で答えてください。"
+    "systemPrompt": "あなたは役立つAIアシスタントです。ユーザーの質問に日本語で答えてください。",
+    "providers": {
+        "openai": {
+            "name": "OpenAI",
+            "description": "GPT-4, GPT-3.5 モデル"
+        },
+        "anthropic": {
+            "name": "Anthropic Claude",
+            "description": "Claude シリーズモデル"
+        },
+        "google-gemini": {
+            "name": "Google Gemini",
+            "description": "Gemini シリーズモデル"
+        },
+        "mistral": {
+            "name": "Mistral",
+            "description": "Mistral シリーズモデル"
+        },
+        "groq": {
+            "name": "Groq",
+            "description": "高速推論エンジン"
+        },
+        "xai-grok": {
+            "name": "xAI (Grok)",
+            "description": "xAI Grok シリーズモデル"
+        },
+        "github-models": {
+            "name": "GitHub Models",
+            "description": "GitHub Marketplace 提供 AI モデル (OAuth 対応)"
+        },
+        "deepseek": {
+            "name": "DeepSeek",
+            "description": "DeepSeek-V3, DeepSeek-R1 推論モデル"
+        },
+        "nvidia": {
+            "name": "NVIDIA NIM",
+            "description": "NVIDIA クラウド NIM 推論サービス"
+        },
+        "together": {
+            "name": "Together AI",
+            "description": "Together AI プラットフォーム"
+        },
+        "openrouter": {
+            "name": "OpenRouter",
+            "description": "OpenRouter 複数モデルルーティングプラットフォーム"
+        },
+        "kilo-gateway": {
+            "name": "Kilo Gateway",
+            "description": "Kilo AI Gateway エンタープライズルーティング"
+        },
+        "synthetic": {
+            "name": "Synthetic (Anthropic-compatible)",
+            "description": "Synthetic AI (Anthropic 互換フォーマット)"
+        },
+        "moonshot": {
+            "name": "Moonshot AI (Kimi)",
+            "description": "Kimi シリーズモデル (グローバル)"
+        },
+        "vercel-gateway": {
+            "name": "Vercel AI Gateway",
+            "description": "Vercel AI Gateway 統一ルーティング"
+        },
+        "cloudflare-gateway": {
+            "name": "Cloudflare AI Gateway",
+            "description": "Cloudflare AI Gateway 統一ルーティング"
+        },
+        "ollama-cloud": {
+            "name": "Ollama Cloud",
+            "description": "公式 Ollama Cloud (API Key が必要)"
+        },
+        "ollama": {
+            "name": "Ollama",
+            "description": "ローカル Ollama サービス (llama, qwen, deepseek 等対応)"
+        },
+        "vllm": {
+            "name": "vLLM",
+            "description": "vLLM 高性能ローカル推論サービス"
+        },
+        "sglang": {
+            "name": "SGLang",
+            "description": "SGLang ローカル推論サービス"
+        },
+        "lm-studio": {
+            "name": "LM Studio",
+            "description": "LM Studio ローカル GUI 推論サービス"
+        },
+        "custom": {
+            "name": "カスタム プロバイダ",
+            "description": "エンタープライズゲートウェイまたはカスタム OpenAI 互換サービス"
+        }
+    },
+    "chat": {
+        "stopConfirm": "もう一度押すと生成を停止します"
+    }
 }

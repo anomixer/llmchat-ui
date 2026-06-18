@@ -318,7 +318,7 @@ export const Header: React.FC<HeaderProps> = ({
                                         }`}
                                 >
                                     <RefreshCw className="h-4 w-4" />
-                                    <span>清除快取並重置</span>
+                                    <span>{t('header.clearCache', '清除快取並重置')}</span>
                                 </button>
 
                                 {/* 設定 */}
@@ -492,7 +492,7 @@ export const Header: React.FC<HeaderProps> = ({
                             ? 'text-gray-400 hover:text-red-400 hover:bg-gray-700'
                             : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
                             }`}
-                        title="清除快取與重置應用程式"
+                        title={t('header.clearCacheTooltip', '清除快取與重置應用程式')}
                     >
                         <RefreshCw className="h-5 w-5" />
                     </button>

@@ -22,7 +22,8 @@ A modern, glassmorphic LLM client interface running entirely in your browser. It
 - **Pure Client-Side Architecture**: Operates 100% inside your browser. All data (conversations, history, settings) is stored securely in your browser's local storage (`localStorage`).
 - **Direct API Connectivity**: Direct connection to local Ollama (`http://localhost:11434`) or cloud providers (OpenAI, DeepSeek, Groq, or any OpenAI-compatible API URL).
 - **DeepSeek R1 & Reasoning Support**: Beautiful display of reasoning steps for thinking models (e.g. DeepSeek R1), with collapsible reasoning/thinking blocks.
-- **Glassmorphic UI**: High-end glassmorphism design with responsive dark/light/system theme modes.
+- **Glassmorphic UI**: High-end glassmorphism design with responsive dark/light/system theme modes, featuring a spacious 2x2 grid layout for AI provider configurations.
+- **Rich Generation Controls**: Fine-tune your AI responses with comprehensive parameters including Temperature, Top P, Top K, and Max Tokens (Context Size).
 - **Rich Interaction**: Supports voice speech-to-text input, text-to-speech audio outputs, file attachments (context sharing), code blocks copy-pasting, and markdown rendering.
 - **Keyboard Shortcuts**: Maximize efficiency with built-in hotkeys.
 - **Data Portability**: Import and export your conversations to JSON or Markdown formats.
@@ -58,12 +59,15 @@ Open `http://localhost:3000` to start chatting!
 
 ### ⚙️ API configuration & CORS
 
-Because LLMChat-UI runs entirely in the browser, direct cloud API connections (e.g., to OpenAI or DeepSeek) might be blocked by CORS unless:
+Because LLMChat-UI runs entirely in the browser, direct cloud API connections (e.g., to OpenAI, DeepSeek, Google Gemini, or GitHub Models) might be blocked by CORS unless:
 1. You use a local Ollama instance with CORS allowed (`OLLAMA_ORIGINS="*" ollama serve`).
-2. You run a local CORS reverse-proxy for cloud APIs.
-3. You configure your own proxy server endpoint in settings.
+2. You use a browser extension to bypass CORS policies (e.g., "Allow CORS: Access-Control-Allow-Origin").
+3. You run a local CORS reverse-proxy for cloud APIs.
+4. You configure your own proxy server endpoint in settings.
 
-*Tip: For remote Ollama servers behind reverse proxies, you can specify the `/v1` endpoint in the API URL (e.g., `https://your-ollama-host/v1`). The client will automatically fall back to using OpenAI-compatible endpoints (`/v1/models` and `/v1/chat/completions`) which are highly compatible with CORS and reverse proxy path routing.*
+*Tip: The client features an advanced endpoint resolver (`resolveEndpoints`). It automatically cleans up any base URL suffixes (such as `/chat/completions`, `/v1/chat/completions`, or `/v1beta/openai`) to correctly deduce the chat completion and model listing endpoints. This enables full compatibility with custom proxy servers, Google Gemini's OpenAI-compatible gateways, and Vercel/Cloudflare AI Gateways.*
+
+*GitHub Models OAuth: If you use the GitHub Models provider, you can log in interactively via GitHub OAuth (PKCE) by entering your custom OAuth App Client ID, or manually paste a Personal Access Token (PAT) with `read:packages` permission.*
 
 > [!WARNING]
 > **Conflict with "Page Assist" and other Ollama Web UI extensions:**
@@ -104,7 +108,8 @@ Because LLMChat-UI runs entirely in the browser, direct cloud API connections (e
 - **純前端無後端架構**：100% 於瀏覽器內執行。所有的對話歷史記錄、API 設定、密鑰都安全地儲存於本地 `localStorage`，保障私隱。
 - **多元 AI 供應商連線**：支援本地 Ollama (`http://localhost:11434`)，以及 OpenAI, DeepSeek, Groq 或者是任何自定義的 OpenAI 規格網址。
 - **DeepSeek R1 思考過程顯示**：完整支援流式思考輸出，提供精美的可折疊思考區塊，方便閱讀推理過程。
-- **現代玻璃擬態介面**：極致美學的毛玻璃設計，具備亮色、暗色與隨系統變換的自適應主題。
+- **現代玻璃擬態介面**：極致美學的毛玻璃設計，具備亮色、暗色與隨系統變換的自適應主題，並配備寬敞的 2x2 網格 AI 供應商配置介面。
+- **進階生成參數控制**：支援完整的模型微調參數，包含 Temperature、Top P、Top K 與 Max Tokens (Context Size)。
 - **多功能對話輔助**：支援語音辨識輸入、語音朗讀、文字與檔案上傳（作為對話上下文）、程式碼區塊一鍵複製等。
 - **快捷鍵操作**：使用鍵盤快捷鍵快速新增對話、清除內容、開啟設定，提供專業使用者高效率工作流。
 - **對話匯入與匯出**：可一鍵將對話記錄匯出為 JSON 與 Markdown 格式。
@@ -142,9 +147,11 @@ npm run dev
 
 由於本專案為純前端應用：
 1. **本地執行 Ollama**：在本地調用 Ollama 時，必須確保設定環境變數 `OLLAMA_ORIGINS="*"` 啟動，否則瀏覽器會因跨來源請求 (CORS) 阻擋連線。
-2. **雲端 API 密鑰**：若直接在瀏覽器打 OpenAI 或 DeepSeek 的雲端 API，請確認您的網路環境能繞過 CORS，或使用反向代理伺服器（CORS Proxy）以轉發請求。密鑰將儲存在您的本機網頁快取中，不會上傳到任何第三方伺服器。
+2. **雲端 API 密鑰**：若直接在瀏覽器呼叫 OpenAI、Gemini 或 GitHub Models 的官方雲端 API，請確認您的瀏覽器已啟用 CORS 繞過插件（例如安裝 Chrome 擴充套件 「Allow CORS: Access-Control-Allow-Origin」並啟用），或者使用自建的反向代理伺服器（CORS Proxy）以轉發請求。所有密鑰與 Token 將安全儲存於您的本機網頁快取 (`localStorage`)，絕不上傳到任何第三方伺服器。
 
-*提示：對於位於反向代理/防護牆（如 Cloudflare WAF）後方的遠端 Ollama 伺服器，若在網址中填寫 `/v1` 結尾（如 `https://your-ollama-host/v1`），客戶端會自動切換為 OpenAI 相容協定（`/v1/models` 與 `/v1/chat/completions`）。這能完美配合只允許轉發 `/v1` 路徑的代理伺服器，並避免 native API 的跨網域與 WAF 阻擋問題。*
+*提示：專案配置了先進的智慧端點解析器 (`resolveEndpoints`)，會自動清理與辨識 API URL 後置的路徑（如 `/chat/completions`、`/v1/chat/completions` 或 `/v1beta/openai`），並自動拼接對應的 models 與 chat 接口。這能完美相容於各種自定義 Proxy 代理網址、Google Gemini OpenAI 相容 Gateway、以及 Vercel/Cloudflare AI Gateway。*
+
+*GitHub Models OAuth 登入：本專案為 GitHub Models 設計了基於安全的 PKCE 授權碼流登入機制。您可以註冊自己的 GitHub OAuth App（回調與主頁網址皆設定為當前網頁 origin）並輸入 Client ID 來一鍵完成授權；或者，您也可以手動建立具有 `read:packages` 權限的 GitHub 個人存取權杖 (PAT) 並貼在 API Key 欄位使用。*
 
 > [!WARNING]
 > **與 Page Assist 等 Ollama 瀏覽器插件的相衝突問題：**

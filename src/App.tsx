@@ -13,6 +13,7 @@ import { useMobileView } from './hooks/useMobileView'
 import { useAutoScroll } from './hooks/useAutoScroll'
 import { useApplyThemeClasses, usePrefersColorSchemeSync } from './hooks/useThemeEffects'
 import { ProviderSettings } from './components/ProviderSettings'
+import { resolveEndpoints } from './utils/url'
 
 interface ChatSettings {
     type?: string
@@ -24,157 +25,10 @@ interface ChatSettings {
     topP: number
     topK: number
     showTokenStats: boolean
+    visionModel: string
 }
 
-const AVAILABLE_PROVIDERS = [
-    {
-        name: 'Ollama',
-        type: 'ollama',
-        baseUrl: 'http://127.0.0.1:11434/v1',
-        description: '本地 Ollama 服務器，無需 API Key',
-        requiresApiKey: false
-    },
-    {
-        name: 'OpenAI',
-        type: 'openai',
-        baseUrl: 'https://api.openai.com/v1',
-        description: 'GPT-4, GPT-3.5 等模型，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Anthropic Claude',
-        type: 'anthropic',
-        baseUrl: 'https://api.anthropic.com/v1',
-        description: 'Claude 系列模型，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Google Gemini',
-        type: 'google-gemini',
-        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-        description: 'Gemini 系列模型，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'DeepSeek',
-        type: 'deepseek',
-        baseUrl: 'https://api.deepseek.com',
-        description: 'DeepSeek 雲端服務，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Mistral',
-        type: 'mistral',
-        baseUrl: 'https://api.mistral.ai/v1',
-        description: 'Mistral 系列模型，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Groq',
-        type: 'groq',
-        baseUrl: 'https://api.groq.com/openai/v1',
-        description: 'Groq 高速推理引擎，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'xAI (Grok)',
-        type: 'xai-grok',
-        baseUrl: 'https://api.x.ai/v1',
-        description: 'xAI Grok 模型，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'NVIDIA NIM',
-        type: 'nvidia',
-        baseUrl: 'https://integrate.api.nvidia.com/v1',
-        description: 'NVIDIA 雲端服務，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Together AI',
-        type: 'together',
-        baseUrl: 'https://api.together.xyz/v1',
-        description: 'Together AI 平台，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'OpenRouter',
-        type: 'openrouter',
-        baseUrl: 'https://openrouter.ai/api/v1',
-        description: 'OpenRouter 聚合平台，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Kilo Gateway',
-        type: 'kilo-gateway',
-        baseUrl: 'https://api.kilo.ai/api/gateway/',
-        description: 'Kilo AI Gateway，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Synthetic (Anthropic-compatible)',
-        type: 'synthetic',
-        baseUrl: 'https://api.synthetic.new/anthropic',
-        description: 'Synthetic AI (Anthropic 相容)，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Moonshot AI (Kimi)',
-        type: 'moonshot',
-        baseUrl: 'https://api.moonshot.ai/v1',
-        description: '月之暗面 Kimi 模型，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Vercel AI Gateway',
-        type: 'vercel-gateway',
-        baseUrl: 'https://gateway.ai.vercel.com/v1/',
-        description: 'Vercel AI Gateway，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Cloudflare AI Gateway',
-        type: 'cloudflare-gateway',
-        baseUrl: 'https://gateway.ai.cloudflare.com/v1/',
-        description: 'Cloudflare AI Gateway，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'Ollama Cloud',
-        type: 'ollama-cloud',
-        baseUrl: 'https://ollama.com',
-        description: 'Ollama 雲端服務，需要 API Key',
-        requiresApiKey: true
-    },
-    {
-        name: 'vLLM',
-        type: 'vllm',
-        baseUrl: 'http://127.0.0.1:8000/v1',
-        description: 'vLLM 本地服務，無需 API Key',
-        requiresApiKey: false
-    },
-    {
-        name: 'SGLang',
-        type: 'sglang',
-        baseUrl: 'http://127.0.0.1:30000/v1',
-        description: 'SGLang 本地服務，無需 API Key',
-        requiresApiKey: false
-    },
-    {
-        name: 'LM Studio',
-        type: 'lm-studio',
-        baseUrl: 'http://127.0.0.1:1234/v1',
-        description: 'LM Studio 本地服務，無需 API Key',
-        requiresApiKey: false
-    },
-    {
-        name: 'Customer Provider (自訂)',
-        type: 'custom',
-        baseUrl: 'http://127.0.0.1:11434/v1',
-        description: '企業 Gateway 或自架服務，需要 API Key',
-        requiresApiKey: true
-    }
-]
+import { AVAILABLE_PROVIDERS } from './utils/providers'
 
 const App: React.FC = () => {
     const { t, i18n } = useTranslation()
@@ -186,7 +40,7 @@ const App: React.FC = () => {
     const authError = null
 
     const logout = () => {
-        const confirmed = window.confirm("確定要清除所有對話與設定嗎？此動作將重置整個應用程式。")
+        const confirmed = window.confirm(t('header.clearConfirm', "確定要清除所有對話與設定嗎？此動作將重置整個應用程式。"))
         if (confirmed) {
             localStorage.clear()
             window.location.reload()
@@ -284,7 +138,8 @@ const App: React.FC = () => {
                     apiKey: parsed.apiKey || '',
                     topP: parsed.topP || 0.9,
                     topK: parsed.topK || 40,
-                    showTokenStats: true
+                    showTokenStats: true,
+                    visionModel: parsed.visionModel || ''
                 }
             } catch (e) {
                 console.error('解析 adminSettings 失敗:', e)
@@ -299,7 +154,8 @@ const App: React.FC = () => {
             apiKey: import.meta.env.VITE_DEFAULT_API_KEY || '',
             topP: 0.9,
             topK: 40,
-            showTokenStats: true
+            showTokenStats: true,
+            visionModel: ''
         }
     })
 
@@ -318,7 +174,8 @@ const App: React.FC = () => {
             apiKey: '',
             topP: 0.9,
             topK: 40,
-            showTokenStats: true
+            showTokenStats: true,
+            visionModel: ''
         }
     })
 
@@ -395,7 +252,8 @@ const App: React.FC = () => {
                 maxTokens: 8192,
                 topP: 0.9,
                 topK: 40,
-                showTokenStats: true
+                showTokenStats: true,
+                visionModel: ''
             }
             localStorage.setItem('adminProviderSettings', JSON.stringify(defaultSettings))
         }
@@ -427,12 +285,9 @@ const App: React.FC = () => {
             console.log('載入模型列表 - type:', providerType, 'apiUrl:', apiUrl)
 
             let models: Array<{ id: string; name: string }> = []
-            const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
+            const { modelsUrl, isOllamaNative } = resolveEndpoints(providerType, apiUrl)
 
             try {
-                const isOllama = providerType === 'ollama' || providerType === 'ollama-cloud'
-                const isOllamaNative = isOllama && !apiUrl.includes('/v1')
-
                 if (isOllamaNative) {
                     const headers: Record<string, string> = {}
                     if (apiKey) {
@@ -440,7 +295,7 @@ const App: React.FC = () => {
                     } else {
                         headers['X-Requested-With'] = 'XMLHttpRequest'
                     }
-                    const response = await fetch(`${cleanApiUrl}/api/tags`, {
+                    const response = await fetch(modelsUrl, {
                         method: 'GET',
                         headers
                     })
@@ -461,7 +316,7 @@ const App: React.FC = () => {
                     if (apiKey) {
                         headers['x-api-key'] = apiKey
                     }
-                    const response = await fetch(`${cleanApiUrl}/v1/models`, {
+                    const response = await fetch(modelsUrl, {
                         method: 'GET',
                         headers
                     })
@@ -481,7 +336,7 @@ const App: React.FC = () => {
                     } else {
                         headers['X-Requested-With'] = 'XMLHttpRequest'
                     }
-                    const response = await fetch(`${cleanApiUrl}/v1/models`, {
+                    const response = await fetch(modelsUrl, {
                         method: 'GET',
                         headers
                     })
@@ -501,8 +356,8 @@ const App: React.FC = () => {
                     models = [
                         { id: 'gpt-4o', name: 'gpt-4o' },
                         { id: 'gpt-4o-mini', name: 'gpt-4o-mini' },
-                        { id: 'gpt-4-turbo', name: 'gpt-4-turbo' },
-                        { id: 'o1-mini', name: 'o1-mini' }
+                        { id: 'o1', name: 'o1' },
+                        { id: 'o3-mini', name: 'o3-mini' }
                     ]
                 } else if (providerType === 'anthropic' || providerType === 'synthetic') {
                     models = [
@@ -513,7 +368,9 @@ const App: React.FC = () => {
                 } else if (providerType === 'google-gemini') {
                     models = [
                         { id: 'gemini-2.5-flash', name: 'gemini-2.5-flash' },
-                        { id: 'gemini-2.5-pro', name: 'gemini-2.5-pro' }
+                        { id: 'gemini-2.5-pro', name: 'gemini-2.5-pro' },
+                        { id: 'gemini-2.0-flash', name: 'gemini-2.0-flash' },
+                        { id: 'gemini-2.0-pro-exp-02-05', name: 'gemini-2.0-pro-exp-02-05' }
                     ]
                 } else if (providerType === 'deepseek') {
                     models = [
@@ -522,9 +379,9 @@ const App: React.FC = () => {
                     ]
                 } else if (providerType === 'groq') {
                     models = [
+                        { id: 'llama-3.3-70b-specdec', name: 'llama-3.3-70b-specdec' },
                         { id: 'llama-3.3-70b-versatile', name: 'llama-3.3-70b-versatile' },
-                        { id: 'llama-3.1-8b-instant', name: 'llama-3.1-8b-instant' },
-                        { id: 'mixtral-8x7b-32768', name: 'mixtral-8x7b-32768' }
+                        { id: 'deepseek-r1-distill-llama-70b', name: 'deepseek-r1-distill-llama-70b' }
                     ]
                 } else if (providerType === 'mistral') {
                     models = [
@@ -534,7 +391,7 @@ const App: React.FC = () => {
                 } else if (providerType === 'xai-grok') {
                     models = [
                         { id: 'grok-2-1212', name: 'grok-2-1212' },
-                        { id: 'grok-2-vision-1212', name: 'grok-2-vision-1212' }
+                        { id: 'grok-beta', name: 'grok-beta' }
                     ]
                 } else if (providerType === 'together') {
                     models = [
@@ -545,6 +402,13 @@ const App: React.FC = () => {
                     models = [
                         { id: 'google/gemini-2.5-pro', name: 'google/gemini-2.5-pro' },
                         { id: 'meta-llama/llama-3.3-70b-instruct', name: 'meta-llama/llama-3.3-70b-instruct' }
+                    ]
+                } else if (providerType === 'github-models') {
+                    models = [
+                        { id: 'gpt-4o', name: 'gpt-4o' },
+                        { id: 'gpt-4o-mini', name: 'gpt-4o-mini' },
+                        { id: 'meta-llama-3.1-405b-instruct', name: 'meta-llama-3.1-405b-instruct' },
+                        { id: 'cohere-command-r-plus', name: 'cohere-command-r-plus' }
                     ]
                 } else if (providerType === 'moonshot') {
                     models = [
@@ -611,7 +475,8 @@ const App: React.FC = () => {
                 maxTokens: 8192,
                 topP: 0.9,
                 topK: 40,
-                showTokenStats: true
+                showTokenStats: true,
+                visionModel: ''
             }
 
             if (adminSettings) {
@@ -625,6 +490,9 @@ const App: React.FC = () => {
                         model: parsed.model || '',
                         temperature: parsed.temperature || 0.7,
                         maxTokens: parsed.maxTokens || 8192,
+                        topP: parsed.topP || 0.9,
+                        topK: parsed.topK || 40,
+                        visionModel: parsed.visionModel || ''
                     }
                 } catch (e) {
                     console.error('解析 adminSettings 失敗:', e)
@@ -713,8 +581,11 @@ const App: React.FC = () => {
         baseUrl: string
         apiKey: string
         model: string
+        visionModel?: string
         temperature: number
         maxTokens: number
+        topP: number
+        topK: number
     }) => {
         localStorage.setItem('adminProviderSettings', JSON.stringify({
             type: providerData.type,
@@ -722,7 +593,10 @@ const App: React.FC = () => {
             apiKey: providerData.apiKey,
             model: providerData.model,
             temperature: providerData.temperature,
-            maxTokens: providerData.maxTokens
+            maxTokens: providerData.maxTokens,
+            topP: providerData.topP,
+            topK: providerData.topK,
+            visionModel: providerData.visionModel || ''
         }))
 
         setSettings(prev => ({
@@ -732,7 +606,10 @@ const App: React.FC = () => {
             apiKey: providerData.apiKey,
             model: providerData.model,
             temperature: providerData.temperature,
-            maxTokens: providerData.maxTokens
+            maxTokens: providerData.maxTokens,
+            topP: providerData.topP,
+            topK: providerData.topK,
+            visionModel: providerData.visionModel || ''
         }))
 
         setUserSettings(prev => ({
@@ -742,13 +619,109 @@ const App: React.FC = () => {
             apiKey: providerData.apiKey,
             model: providerData.model,
             temperature: providerData.temperature,
-            maxTokens: providerData.maxTokens
+            maxTokens: providerData.maxTokens,
+            topP: providerData.topP,
+            topK: providerData.topK,
+            visionModel: providerData.visionModel || ''
         }))
 
         setTimeout(() => {
             loadAvailableModels(providerData.model)
         }, 100)
     }
+
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get('code')
+        const state = urlParams.get('state')
+        
+        if (code) {
+            const storedState = localStorage.getItem('github_oauth_state')
+            const verifier = localStorage.getItem('github_oauth_verifier')
+            const clientId = localStorage.getItem('github_oauth_client_id')
+            const providerType = localStorage.getItem('github_oauth_provider_type') || 'github-models'
+            
+            // 立即清除網址中的參數，保持介面簡潔
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname
+            window.history.replaceState({ path: newUrl }, '', newUrl)
+
+            if (state && state === storedState && verifier && clientId) {
+                const exchangeToken = async () => {
+                    try {
+                        const response = await fetch('https://github.com/login/oauth/access_token', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                client_id: clientId,
+                                code: code,
+                                code_verifier: verifier,
+                                redirect_uri: window.location.origin
+                            })
+                        })
+                        if (response.ok) {
+                            const data = await response.json()
+                            if (data.access_token) {
+                                const currentAdminSettings = localStorage.getItem('adminProviderSettings')
+                                let baseSettings: any = {}
+                                if (currentAdminSettings) {
+                                    try { baseSettings = JSON.parse(currentAdminSettings) } catch {}
+                                }
+                                
+                                const updatedSettings = {
+                                    ...baseSettings,
+                                    type: providerType,
+                                    apiKey: data.access_token,
+                                    baseUrl: providerType === 'github-models' ? 'https://models.github.ai/v1' : baseSettings.baseUrl
+                                }
+                                
+                                localStorage.setItem('adminProviderSettings', JSON.stringify(updatedSettings))
+                                setSettings(prev => ({
+                                    ...prev,
+                                    type: providerType,
+                                    apiKey: data.access_token,
+                                    apiUrl: updatedSettings.baseUrl
+                                }))
+                                setUserSettings(prev => ({
+                                    ...prev,
+                                    type: providerType,
+                                    apiKey: token,
+                                    apiUrl: updatedSettings.baseUrl
+                                }))
+                                
+                                setTimeout(() => {
+                                    loadAvailableModels(updatedSettings.model)
+                                }, 100)
+                            } else if (data.error_description) {
+                                alert(`${t('admin.llm.githubOauthError', 'OAuth 兌換錯誤')}: ${data.error_description}`)
+                            } else {
+                                alert(t('admin.llm.githubOauthServerError', 'OAuth 兌換錯誤，請確認您的 GitHub App 設定，或改用手動輸入 Token。'))
+                            }
+                        } else {
+                            alert(t('admin.llm.githubOauthServerError', 'OAuth 兌換錯誤，請確認您的 GitHub App 設定，或改用手動輸入 Token。'))
+                        }
+                    } catch (error: any) {
+                        if (error.message && error.message.includes('HTTP error!')) {
+                            const statusMatch = error.message.match(/status: (\d+)/)
+                            const status = statusMatch ? statusMatch[1] : 'Unknown'
+                            alert(`${t('admin.llm.githubOauthCorsError', 'OAuth 伺服器連線失敗 (狀態碼 {{status}})，請確認跨來源連線 (CORS) 設定。', { status })}`)
+                        } else {
+                            console.error('Exchange error:', error)
+                            alert(`${t('admin.llm.githubOauthException', 'OAuth Token 兌換時發生異常: {{msg}}。\n提醒：GitHub 預設可能不允許瀏覽器端直接進行 CORS 請求。若遇到 CORS 阻擋，您可以直接建立並手動貼上 GitHub 個人存取權杖 (PAT)。', { msg: error.message })}`)
+                        }
+                    } finally {
+                        localStorage.removeItem('github_oauth_state')
+                        localStorage.removeItem('github_oauth_verifier')
+                        localStorage.removeItem('github_oauth_client_id')
+                        localStorage.removeItem('github_oauth_provider_type')
+                    }
+                }
+                exchangeToken()
+            }
+        }
+    }, [])
 
     useEffect(() => {
         loadUserSettings()
@@ -832,7 +805,7 @@ const App: React.FC = () => {
     const readFileContent = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
             if (file.type === 'application/pdf') {
-                resolve(`[PDF檔案: ${file.name}]\n${t('input.files.pdfNote')}`)
+                resolve(`[${t('input.files.pdfFile', 'PDF檔案')}: ${file.name}]\n${t('input.files.pdfNote')}`)
             } else if (file.type.startsWith('image/')) {
                 const reader = new FileReader()
                 reader.onload = () => resolve(reader.result as string)
@@ -899,7 +872,7 @@ const App: React.FC = () => {
 
         let messageContent = input.trim()
         if (attachedFiles.length > 0) {
-            messageContent = messageContent + '\n\n[附加檔案: ' + attachedFiles.map(f => f.name).join(', ') + ']'
+            messageContent = messageContent + '\n\n[' + t('input.files.attachedFiles', '附加檔案') + ': ' + attachedFiles.map(f => f.name).join(', ') + ']'
         }
 
         let hiddenContent = messageContent
@@ -931,7 +904,7 @@ const App: React.FC = () => {
         let conversationId = currentConversationId
         if (!conversationId) {
             const newConversation = createConversation({
-                title: `對話 ${conversations.length + 1}`,
+                title: t('conversation.newTitle', { count: conversations.length + 1, defaultValue: `對話 ${conversations.length + 1}` }),
                 messages: [userMessage]
             })
             addConversation(newConversation, true)
@@ -1080,7 +1053,7 @@ const App: React.FC = () => {
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
                 <div className="text-center">
                     <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">載入中...</p>
+                    <p className="text-gray-600 dark:text-gray-400">{t('app.loading', '載入中...')}</p>
                 </div>
             </div>
         )
@@ -1647,13 +1620,13 @@ const App: React.FC = () => {
                                 value={input}
                                 onChange={(e) => setInputDebounced(e.target.value)}
                                 onKeyPress={handleKeyPress}
-                                placeholder={isMobileView ? (input ? '' : '輸入訊息...') : t('input.placeholder')}
+                                placeholder={isMobileView ? (input ? '' : t('input.placeholderMobile', '輸入訊息...')) : t('input.placeholder')}
                                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[52px] max-h-32 transition-colors ${isDarkMode
                                     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                                     : 'bg-white border-gray-300'
                                     }`}
                                 rows={1}
-                                disabled={isLoading}
+                                disabled={isStreaming}
                             />
                             {stopConfirmText && (
                                 <div className={`absolute right-6 top-1/2 transform -translate-y-1/2 text-sm font-medium pointer-events-none transition-colors ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
@@ -1738,7 +1711,7 @@ const App: React.FC = () => {
             {showProviderSettingsModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
                     <div 
-                        className={`w-full max-w-lg p-6 rounded-xl shadow-2xl border transition-all duration-200 transform scale-100 ${
+                        className={`w-full max-w-6xl p-6 rounded-xl shadow-2xl border transition-all duration-200 transform scale-100 ${
                             isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'
                         }`}
                     >
@@ -1759,9 +1732,12 @@ const App: React.FC = () => {
                                     type: settings.type || 'ollama',
                                     baseUrl: settings.apiUrl || 'http://localhost:11434',
                                     model: settings.model || '',
+                                    visionModel: settings.visionModel || '',
                                     apiKey: settings.apiKey || '',
                                     temperature: settings.temperature ?? 0.7,
-                                    maxTokens: settings.maxTokens ?? 2048,
+                                    maxTokens: settings.maxTokens ?? 8192,
+                                    topP: settings.topP ?? 0.9,
+                                    topK: settings.topK ?? 40,
                                     requiresApiKey: AVAILABLE_PROVIDERS.find(p => p.type === (settings.type || 'ollama'))?.requiresApiKey ?? true
                                 }}
                                 availableProviders={AVAILABLE_PROVIDERS}

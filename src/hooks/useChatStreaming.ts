@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { resolveEndpoints } from '../utils/url'
+import i18n from '../i18n'
 
 export interface StreamChatInput {
     message: string
@@ -111,7 +113,7 @@ export function useChatStreaming() {
 
         if (!stopRequested && !force) {
             setStopRequested(true)
-            setStopConfirmText('再按一次停止生成')
+            setStopConfirmText(i18n.t('chat.stopConfirm', '再按一次停止生成'))
 
             clearStopTimer()
             stopResetTimerRef.current = window.setTimeout(() => {
@@ -167,10 +169,14 @@ export function useChatStreaming() {
             const apiUrl = settings.apiUrl || 'http://localhost:11434'
             const apiKey = settings.apiKey || ''
 
+            let effectiveModel = settings.model || 'llama3'
+            if (images && images.length > 0 && settings.visionModel && settings.visionModel !== settings.model) {
+                effectiveModel = settings.visionModel
+            }
+
             let response: Response
 
-            const isOllama = providerType === 'ollama' || providerType === 'ollama-cloud'
-            const isOllamaNative = isOllama && !apiUrl.includes('/v1')
+            const { chatUrl, isOllamaNative } = resolveEndpoints(providerType, apiUrl)
 
             if (isOllamaNative) {
                 // Clean base64 prefixes from images if present
@@ -180,18 +186,17 @@ export function useChatStreaming() {
                 }
                 const ollamaImages = images?.map(cleanBase64)
 
-                const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
                 const ollamaHeaders: Record<string, string> = {
                     'Content-Type': 'application/json'
                 }
                 if (apiKey) {
                     ollamaHeaders['Authorization'] = `Bearer ${apiKey}`
                 }
-                response = await fetch(`${cleanApiUrl}/api/chat`, {
+                response = await fetch(chatUrl, {
                     method: 'POST',
                     headers: ollamaHeaders,
                     body: JSON.stringify({
-                        model: settings.model || 'llama3',
+                        model: effectiveModel,
                         messages: [
                             ...history.map(msg => ({
                                 role: msg.role,
@@ -205,6 +210,8 @@ export function useChatStreaming() {
                         ],
                         options: {
                             temperature: settings.temperature ?? 0.7,
+                            top_p: settings.topP ?? 0.9,
+                            top_k: settings.topK ?? 40,
                             num_predict: settings.maxTokens ?? 2048
                         },
                         stream: true
@@ -223,12 +230,15 @@ export function useChatStreaming() {
                 }
 
                 const payload: any = {
-                    model: settings.model,
+                    model: effectiveModel,
                     messages: history.map(msg => ({
                         role: msg.role === 'assistant' ? 'assistant' : 'user',
                         content: msg.content
                     })).concat({ role: 'user', content: message }),
                     max_tokens: settings.maxTokens || 4096,
+                    temperature: settings.temperature ?? 0.7,
+                    top_p: settings.topP ?? 0.9,
+                    top_k: settings.topK ?? 40,
                     stream: true
                 }
 
@@ -237,8 +247,7 @@ export function useChatStreaming() {
                     payload.system = systemPrompt
                 }
 
-                const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
-                response = await fetch(`${cleanApiUrl}/v1/messages`, {
+                response = await fetch(chatUrl, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(payload),
@@ -266,7 +275,7 @@ export function useChatStreaming() {
                 }
 
                 const payload: any = {
-                    model: settings.model,
+                    model: effectiveModel,
                     messages: [
                         ...history.map(msg => ({
                             role: msg.role,
@@ -278,6 +287,7 @@ export function useChatStreaming() {
                         }
                     ],
                     temperature: settings.temperature ?? 0.7,
+                    top_p: settings.topP ?? 0.9,
                     stream: true
                 }
 
@@ -285,8 +295,7 @@ export function useChatStreaming() {
                     payload.max_tokens = settings.maxTokens
                 }
 
-                const cleanApiUrl = apiUrl.replace(/\/v1\/?$/, '')
-                response = await fetch(`${cleanApiUrl}/v1/chat/completions`, {
+                response = await fetch(chatUrl, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(payload),

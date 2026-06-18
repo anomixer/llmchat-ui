@@ -1,6 +1,6 @@
 {
     "name": "llmchat-ui",
-    "version": "260611",
+    "version": "260618",
     "description": "Pure client-side Local LLM Chat Application with React frontend",
     "type": "module",
     "scripts": {

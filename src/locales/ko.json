@@ -25,7 +25,8 @@
             "button": "대화 내보내기",
             "json": "JSON으로 내보내기",
             "markdown": "Markdown으로 내보내기"
-        }
+        },
+        "newTitle": "채팅 {{count}}"
     },
     "buttons": {
         "send": "메시지 보내기",
@@ -57,7 +58,10 @@
         "github": "GitHub에서 보기",
         "menu": "메뉴",
         "adminBadge": "관리자",
-        "adminButton": "사용자 관리"
+        "adminButton": "사용자 관리",
+        "clearConfirm": "모든 대화 및 설정을 지우시겠습니까? 이 작업은 전체 애플리케이션을 재설정합니다.",
+        "clearCache": "캐시 지우기 및 재설정",
+        "clearCacheTooltip": "캐시를 지우고 애플리케이션을 재설정합니다"
     },
     "settings": {
         "configureApiAndModel": "API 및 모델 구성",
@@ -159,8 +163,11 @@
         "files": {
             "button": "파일 첨부 (이미지, 텍스트, PDF, JSON 지원, 최대 50MB)",
             "sizeError": "파일 {{name}}이(가) 너무 큽니다. 50MB 미만의 파일을 선택하세요",
-            "typeError": "파일 유형 {{type}}은(는) 지원되지 않습니다"
-        }
+            "typeError": "파일 유형 {{type}}은(는) 지원되지 않습니다",
+            "pdfFile": "PDF 파일",
+            "attachedFiles": "첨부 파일"
+        },
+        "placeholderMobile": "메시지 입력..."
     },
     "auth": {
         "welcome": "LLMChat에 오신 것을 환영합니다",
@@ -302,15 +309,128 @@
             "testAndSave": "제공자 테스트 및 저장",
             "saveSuccess": "✅ 설정이 저장되었습니다",
             "saveWarning": "⚠️ 설정은 저장되었지만 연결에 실패했습니다",
-            "saveError": "❌ 저장 실패",
+            "saveError": "저장 실패",
             "current": "현재",
             "testSuccess": "✅ 연결에 성공했습니다",
             "testFailed": "❌ 연결에 실패했습니다",
             "testError": "❌ 연결 오류: ",
             "corsHint": "API URL이 올바른지, 서버가 실행 중인지, CORS 교차 출처 연결이 활성화되어 있는지 확인하십시오 (예: Ollama의 경우 OLLAMA_ORIGINS=* 설정 필요). 또는 Page Assist와 같이 간섭하는 브라우저 확장 프로그램이 실행 중인지 확인하십시오.",
             "unauthorizedHint": "API 키가 올바르지 않거나 인증 오류가 발생했습니다 (401)",
-            "statusCodeHint": "서버가 상태 코드 {{status}}를 반환했습니다"
+            "statusCodeHint": "서버가 상태 코드 {{status}}를 반환했습니다",
+            "advancedParams": "고급 매개변수",
+            "visionModelPlaceholder": "전용 모델이 필요한 경우 입력하고, 그렇지 않으면 비워 두십시오",
+            "visionModelSameAsText": "위의 텍스트 모델과 동일 (멀티모달 지원 시)",
+            "githubOauthMissingId": "먼저 GitHub OAuth 앱의 Client ID를 입력하세요!",
+            "githubOauthInitFailed": "OAuth 흐름을 초기화하지 못했습니다. 다시 시도해 주세요.",
+            "fetchModelsEmpty": "사용 가능한 모델을 가져오지 못했습니다.",
+            "fetchModelsFailed": "모델을 가져오지 못했습니다. API 설정 및 CORS 제한을 확인하세요.",
+            "githubOauthTitle": "GitHub OAuth 빠른 로그인",
+            "githubOauthDesc1": "등록된 GitHub OAuth 앱을 사용하여 로그인하고 토큰을 자동으로 가져올 수 있습니다 (콜백 URL은",
+            "githubOauthDesc2": "로 설정해야 하며 Client Secret은 필요하지 않습니다).",
+            "githubOauthIdPlaceholder": "예: Ov23wx...",
+            "githubOauthLogin": "로그인 인증",
+            "githubManualTitle": "수동 생성 방법:",
+            "githubManualDesc": "GitHub의 Developer Settings -> Personal Access Tokens로 이동하여 최소한 ",
+            "githubManualDesc2": " 권한을 선택하여 classic 토큰을 생성한 다음 API Key 필드에 ghp_... 토큰을 붙여넣으십시오.",
+            "githubOauthSuccess": "GitHub OAuth 로그인 성공! 액세스 토큰을 가져왔습니다.",
+            "githubOauthError": "OAuth 교환 오류",
+            "githubOauthServerError": "OAuth 교환 오류입니다. GitHub 앱 설정을 확인하거나 토큰을 수동으로 입력하세요.",
+            "githubOauthCorsError": "OAuth 서버 연결 실패 (상태 {{status}}). CORS 설정을 확인하세요.",
+            "githubOauthException": "OAuth 토큰 교환 예외: {{msg}}.\n참고: GitHub 기본값은 브라우저에서 직접 CORS 요청을 허용하지 않을 수 있습니다. CORS에 의해 차단된 경우 수동으로 GitHub 개인 액세스 토큰(PAT)을 만들고 붙여넣을 수 있습니다."
         }
     },
-    "systemPrompt": "당신은 도움이 되는 AI 어시스턴트입니다. 사용자의 질문에 한국어로 답변해 주세요."
+    "systemPrompt": "당신은 도움이 되는 AI 어시스턴트입니다. 사용자의 질문에 한국어로 답변해 주세요.",
+    "providers": {
+        "openai": {
+            "name": "OpenAI",
+            "description": "GPT-4, GPT-3.5 모델"
+        },
+        "anthropic": {
+            "name": "Anthropic Claude",
+            "description": "Claude 시리즈 모델"
+        },
+        "google-gemini": {
+            "name": "Google Gemini",
+            "description": "Gemini 시리즈 모델"
+        },
+        "mistral": {
+            "name": "Mistral",
+            "description": "Mistral 시리즈 모델"
+        },
+        "groq": {
+            "name": "Groq",
+            "description": "고속 추론 엔진"
+        },
+        "xai-grok": {
+            "name": "xAI (Grok)",
+            "description": "xAI Grok 시리즈 모델"
+        },
+        "github-models": {
+            "name": "GitHub Models",
+            "description": "GitHub Marketplace 제공 AI 모델 (OAuth 지원)"
+        },
+        "deepseek": {
+            "name": "DeepSeek",
+            "description": "DeepSeek-V3, DeepSeek-R1 추론 모델"
+        },
+        "nvidia": {
+            "name": "NVIDIA NIM",
+            "description": "NVIDIA 클라우드 NIM 추론 서비스"
+        },
+        "together": {
+            "name": "Together AI",
+            "description": "Together AI 플랫폼"
+        },
+        "openrouter": {
+            "name": "OpenRouter",
+            "description": "OpenRouter 다중 모델 라우팅 플랫폼"
+        },
+        "kilo-gateway": {
+            "name": "Kilo Gateway",
+            "description": "Kilo AI Gateway 엔터프라이즈 라우팅"
+        },
+        "synthetic": {
+            "name": "Synthetic (Anthropic-compatible)",
+            "description": "Synthetic AI (Anthropic 호환 형식)"
+        },
+        "moonshot": {
+            "name": "Moonshot AI (Kimi)",
+            "description": "Kimi 시리즈 모델 (글로벌)"
+        },
+        "vercel-gateway": {
+            "name": "Vercel AI Gateway",
+            "description": "Vercel AI Gateway 통합 라우팅"
+        },
+        "cloudflare-gateway": {
+            "name": "Cloudflare AI Gateway",
+            "description": "Cloudflare AI Gateway 통합 라우팅"
+        },
+        "ollama-cloud": {
+            "name": "Ollama Cloud",
+            "description": "공식 Ollama Cloud (API Key 필요)"
+        },
+        "ollama": {
+            "name": "Ollama",
+            "description": "로컬 Ollama 서비스 (llama, qwen, deepseek 등 지원)"
+        },
+        "vllm": {
+            "name": "vLLM",
+            "description": "vLLM 고성능 로컬 추론 서비스"
+        },
+        "sglang": {
+            "name": "SGLang",
+            "description": "SGLang 로컬 추론 서비스"
+        },
+        "lm-studio": {
+            "name": "LM Studio",
+            "description": "LM Studio 로컬 GUI 추론 서비스"
+        },
+        "custom": {
+            "name": "사용자 지정 프로바이더",
+            "description": "엔터프라이즈 게이트웨이 또는 맞춤형 OpenAI 호환 서비스"
+        }
+    },
+    "chat": {
+        "stopConfirm": "다시 누르면 생성 중지"
+    }
 }

@@ -4,6 +4,32 @@
 
 ---
 
+### v260618 (2026-06-18)
+
+- 🎨 **重構 AI 供應商配置介面與版面升級**：
+  - 將配置視窗由原先的單欄式大幅拓寬並改為 **2x2 網格佈局**（左上：供應商選擇，右上：API 金鑰與認證；左下：純文字模型，右下：視覺/多模態模型），提供更清晰、寬敞且不會擁擠的視覺體驗。
+- 👁️ **新增獨立的視覺模型 (Vision Model) 支援**：
+  - 在設定介面中加入專屬的「視覺模型」選擇下拉選單。
+  - 實作智慧動態切換：當用戶輸入框中未附加圖片時，系統依舊使用預設的純文字模型以節省成本；一旦偵測到附加圖片，將自動在背景把 API 請求切換為設定的視覺模型（例如平常對話用 `llama3`，傳圖時自動切為 `llava`）。
+- 🎛️ **補齊進階生成參數**：
+  - 在進階參數區塊中，除了原有的 Temperature 與 Max Tokens (Context Size) 外，重新加回了 **Top P** 與 **Top K** 兩個精細控制參數的滑桿。
+  - 將上述參數完整串接到底層請求中，包含 Ollama NDJSON 規格、Anthropic 格式以及 OpenAI 相容 API 格式皆能正確傳遞。
+
+---
+
+### v260617 (2026-06-17)
+
+- 🔌 **引進全新 API 端點解析器與 URL 清理機制**：
+  - 實作了強大的 `resolveEndpoints` 輔助工具，能精確清理並解析各種 API URL 後綴（如 `/chat/completions`、`/v1/chat/completions`、`/api/chat` 等），自動提取正確的對話與模型列表端點，徹底解決當用戶將 Base URL 填寫為包含 `/chat/completions` 等路徑或使用 Google Gemini OpenAI 相容端點時 models API 報 404/連線失敗的問題。
+- 🐙 **新增 GitHub Models 供應商支援**：
+  - 在可選 AI Provider 列表中新增了 **GitHub Models** (`https://models.github.ai/v1`)，便於用戶接入 GitHub Marketplace 提供的各類先進 AI 模型。
+- 🔑 **實作純前端 GitHub OAuth 快速登入功能 (PKCE 授權碼流程)**：
+  - 在設定面板中新增了 GitHub OAuth 互動登入模組。使用者可以配置自己的 GitHub Client ID 並一鍵完成 OAuth 登入，登入後系統自動在背景透過安全的 PKCE 流程向 GitHub 伺服器兌換 Token 並填入設定，同時也提供了手動建立 Personal Access Token (PAT) 作為備用方案的引導。
+- 🔄 **更新預設最新熱門模型庫**：
+  - 更新了各大主要 AI Provider（包括 OpenAI, Gemini, Groq, xAI Grok 等）的預設 fallback 模型列表（例如新增了 OpenAI 的 `o1`/`o3-mini`、Gemini `2.0`/`2.5` 以及 Groq 的 `llama-3.3-70b-specdec`/`deepseek-r1` 等）。
+
+---
+
 ### v260611 (2026-06-11)
 
 - 🌐 **優化本地與遠端大模型 (Ollama, LM Studio 等) 的連線與 CORS 相容性**：

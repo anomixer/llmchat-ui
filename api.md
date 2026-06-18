@@ -43,6 +43,8 @@ LLMChat-UI 是一個純前端架構的應用程式。本文件詳細記錄了應
     ],
     "options": {
       "temperature": 0.7,
+      "top_p": 0.9,
+      "top_k": 40,
       "num_predict": 2048
     },
     "stream": true
@@ -91,6 +93,7 @@ LLMChat-UI 是一個純前端架構的應用程式。本文件詳細記錄了應
       { "role": "user", "content": "Hello" }
     ],
     "temperature": 0.7,
+    "top_p": 0.9,
     "max_tokens": 2048,
     "stream": true
   }
@@ -158,6 +161,9 @@ LLMChat-UI 是一個純前端架構的應用程式。本文件詳細記錄了應
       { "role": "user", "content": "Hello" }
     ],
     "max_tokens": 4096,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "top_k": 40,
     "stream": true
   }
   ```

@@ -25,7 +25,8 @@
             "button": "Export conversation",
             "json": "Export as JSON",
             "markdown": "Export as Markdown"
-        }
+        },
+        "newTitle": "Chat {{count}}"
     },
     "buttons": {
         "send": "Send message",
@@ -57,7 +58,10 @@
         "github": "View on GitHub",
         "menu": "Menu",
         "adminBadge": "Admin",
-        "adminButton": "User Management"
+        "adminButton": "User Management",
+        "clearConfirm": "Are you sure you want to clear all conversations and settings? This action will reset the entire application.",
+        "clearCache": "Clear Cache & Reset",
+        "clearCacheTooltip": "Clear cache and reset application"
     },
     "settings": {
         "configureApiAndModel": "Configure API & Models",
@@ -159,8 +163,11 @@
         "files": {
             "button": "Attach files (supports images, text, PDF, JSON, max 50MB)",
             "sizeError": "File {{name}} is too large, please select files smaller than 50MB",
-            "typeError": "File type {{type}} is not supported"
-        }
+            "typeError": "File type {{type}} is not supported",
+            "pdfFile": "PDF File",
+            "attachedFiles": "Attached Files"
+        },
+        "placeholderMobile": "Message..."
     },
     "auth": {
         "welcome": "Welcome to LLMChat",
@@ -302,15 +309,128 @@
             "testAndSave": "Test & Save Provider",
             "saveSuccess": "✅ Settings saved",
             "saveWarning": "⚠️ Settings saved but connection failed",
-            "saveError": "❌ Failed to save",
+            "saveError": "Save failed",
             "current": "Current",
             "testSuccess": "✅ Connection successful",
             "testFailed": "❌ Connection failed",
             "testError": "❌ Connection error: ",
             "corsHint": "Please verify your API URL, ensure the server is running, and CORS is enabled (e.g. set OLLAMA_ORIGINS=* for Ollama), or check if there are any conflicting browser extensions (e.g. Page Assist) running.",
             "unauthorizedHint": "Invalid API Key or authorization error (401)",
-            "statusCodeHint": "Server responded with status code {{status}}"
+            "statusCodeHint": "Server responded with status code {{status}}",
+            "advancedParams": "Advanced Parameters",
+            "visionModelPlaceholder": "Enter specific model if needed, otherwise leave blank",
+            "visionModelSameAsText": "Same as text model above (if multimodal supported)",
+            "githubOauthMissingId": "Please enter your GitHub OAuth App Client ID first!",
+            "githubOauthInitFailed": "Failed to initialize OAuth flow, please try again.",
+            "fetchModelsEmpty": "Failed to fetch any available models",
+            "fetchModelsFailed": "Failed to fetch models, please check API settings and CORS restrictions.",
+            "githubOauthTitle": "GitHub OAuth Quick Login",
+            "githubOauthDesc1": "You can login using your own registered GitHub OAuth App to automatically get a Token (Callback URL must be set to",
+            "githubOauthDesc2": ", and Client Secret is not required).",
+            "githubOauthIdPlaceholder": "e.g. Ov23wx...",
+            "githubOauthLogin": "Authorize",
+            "githubManualTitle": "Manual Method:",
+            "githubManualDesc": "You can go to GitHub Developer Settings -> Personal Access Tokens to create a classic token with at least ",
+            "githubManualDesc2": " permission, and then paste the ghp_... token directly into the API Key field above.",
+            "githubOauthSuccess": "GitHub OAuth login successful! Access Token retrieved.",
+            "githubOauthError": "OAuth Exchange Error",
+            "githubOauthServerError": "OAuth exchange error. Please check your GitHub App settings or enter token manually.",
+            "githubOauthCorsError": "OAuth server connection failed (Status {{status}}). Please check CORS settings.",
+            "githubOauthException": "OAuth Token exchange exception: {{msg}}.\nNote: GitHub defaults may not allow direct CORS requests from the browser. If blocked by CORS, you can create and paste a GitHub Personal Access Token (PAT) manually."
         }
     },
-    "systemPrompt": "You are a helpful AI assistant. Please answer user questions in English."
+    "systemPrompt": "You are a helpful AI assistant. Please answer user questions in English.",
+    "providers": {
+        "openai": {
+            "name": "OpenAI",
+            "description": "GPT-4, GPT-3.5 models"
+        },
+        "anthropic": {
+            "name": "Anthropic Claude",
+            "description": "Claude series models"
+        },
+        "google-gemini": {
+            "name": "Google Gemini",
+            "description": "Gemini series models"
+        },
+        "mistral": {
+            "name": "Mistral",
+            "description": "Mistral series models"
+        },
+        "groq": {
+            "name": "Groq",
+            "description": "Fast inference engine"
+        },
+        "xai-grok": {
+            "name": "xAI (Grok)",
+            "description": "xAI Grok series models"
+        },
+        "github-models": {
+            "name": "GitHub Models",
+            "description": "AI Models from GitHub Marketplace (Supports OAuth)"
+        },
+        "deepseek": {
+            "name": "DeepSeek",
+            "description": "DeepSeek-V3, DeepSeek-R1 inference models"
+        },
+        "nvidia": {
+            "name": "NVIDIA NIM",
+            "description": "NVIDIA Cloud NIM inference service"
+        },
+        "together": {
+            "name": "Together AI",
+            "description": "Together AI Platform"
+        },
+        "openrouter": {
+            "name": "OpenRouter",
+            "description": "OpenRouter Multi-model routing platform"
+        },
+        "kilo-gateway": {
+            "name": "Kilo Gateway",
+            "description": "Kilo AI Gateway enterprise routing"
+        },
+        "synthetic": {
+            "name": "Synthetic (Anthropic-compatible)",
+            "description": "Synthetic AI (Anthropic compatible format)"
+        },
+        "moonshot": {
+            "name": "Moonshot AI (Kimi)",
+            "description": "Kimi series models (Global)"
+        },
+        "vercel-gateway": {
+            "name": "Vercel AI Gateway",
+            "description": "Vercel AI Gateway unified routing"
+        },
+        "cloudflare-gateway": {
+            "name": "Cloudflare AI Gateway",
+            "description": "Cloudflare AI Gateway unified routing"
+        },
+        "ollama-cloud": {
+            "name": "Ollama Cloud",
+            "description": "Official Ollama Cloud (Requires API Key)"
+        },
+        "ollama": {
+            "name": "Ollama",
+            "description": "Local Ollama service (Supports llama, qwen, deepseek, etc.)"
+        },
+        "vllm": {
+            "name": "vLLM",
+            "description": "vLLM high-performance local inference"
+        },
+        "sglang": {
+            "name": "SGLang",
+            "description": "SGLang local inference service"
+        },
+        "lm-studio": {
+            "name": "LM Studio",
+            "description": "LM Studio local GUI inference"
+        },
+        "custom": {
+            "name": "Custom Provider",
+            "description": "Enterprise Gateway or custom OpenAI compatible service"
+        }
+    },
+    "chat": {
+        "stopConfirm": "Press again to stop generating"
+    }
 }
