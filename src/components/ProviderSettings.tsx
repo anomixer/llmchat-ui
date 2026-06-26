@@ -110,15 +110,6 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
         runFlow()
     }
 
-    // 當選擇不同 provider 時，更新預設值
-    useEffect(() => {
-        if (selectedProvider) {
-            if (connectionStatus === 'idle') {
-                setBaseUrl(selectedProvider.baseUrl)
-            }
-        }
-    }, [selectedProvider, connectionStatus])
-
     // 檢查連接
     const checkConnection = async () => {
         setIsChecking(true)

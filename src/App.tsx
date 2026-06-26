@@ -134,7 +134,7 @@ const App: React.FC = () => {
                     model: parsed.model || '',
                     temperature: parsed.temperature ?? 0.7,
                     maxTokens: parsed.maxTokens ?? 8192,
-                    apiUrl: parsed.baseUrl || 'http://127.0.0.1:11434',
+                    apiUrl: parsed.baseUrl ?? 'http://127.0.0.1:11434',
                     apiKey: parsed.apiKey || '',
                     topP: parsed.topP ?? 0.9,
                     topK: parsed.topK ?? 40,
@@ -272,7 +272,7 @@ const App: React.FC = () => {
             if (adminSettings) {
                 try {
                     const parsed = JSON.parse(adminSettings)
-                    apiUrl = parsed.baseUrl || 'http://127.0.0.1:11434'
+                    apiUrl = parsed.baseUrl ?? 'http://127.0.0.1:11434'
                     apiKey = parsed.apiKey || ''
                     providerType = parsed.type || 'ollama'
                 } catch (e) {}
@@ -485,7 +485,7 @@ const App: React.FC = () => {
                     providerConfig = {
                         ...providerConfig,
                         type: parsed.type || 'ollama',
-                        apiUrl: parsed.baseUrl || 'http://localhost:11434',
+                        apiUrl: parsed.baseUrl ?? 'http://localhost:11434',
                         apiKey: parsed.apiKey || '',
                         model: parsed.model || '',
                         temperature: parsed.temperature ?? 0.7,
@@ -935,7 +935,7 @@ const App: React.FC = () => {
                         ...settings,
                         type: parsed.type || settings.type,
                         model: selectedModel,
-                        apiUrl: parsed.baseUrl || settings.apiUrl,
+                        apiUrl: parsed.baseUrl ?? settings.apiUrl,
                         apiKey: parsed.apiKey || settings.apiKey
                     }
                 }
