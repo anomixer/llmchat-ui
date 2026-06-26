@@ -74,6 +74,10 @@ Because LLMChat-UI runs entirely in the browser, direct cloud API connections (e
 > If you have extensions like [Page Assist](https://chromewebstore.google.com/detail/page-assist-a-web-ui-for/jfgfiigpkhlkbnfnbobbkinehhfdhndo) installed and enabled, they may intercept all API requests targeting Ollama. In Chrome's standard mode, this interception rewrites the `Origin` header to match the target host, tricking the server but causing Chrome to block the response with CORS errors (`net::ERR_CONNECTION_REFUSED` or missing headers). 
 > **To resolve this, please temporarily disable Page Assist or configure it to ignore your custom Ollama domains, or run the browser in Incognito mode / Firefox.** *(A diagnostic warning is also displayed directly in the connection error message to assist you.)*
 
+> [!WARNING]
+> **Limitations with Ollama Cloud Models (`:cloud` suffix):**
+> If you are using local Ollama but trying to run a cloud-hosted model (e.g. `llama3.2:cloud`) after authenticating with `ollama signin`, it **will fail in this pure frontend version (llmchat-ui)**. This is because Ollama redirects these requests to its external cloud servers, which triggers the browser's strict Cross-Origin Resource Sharing (CORS) enforcement and blocks the connection. To use Ollama's `:cloud` models, please use the backend-powered version (`llmchat`), as Node.js servers are not subject to browser CORS policies.
+
 ### ☁️ Cloud Deployments
 
 #### Vercel
@@ -157,6 +161,10 @@ npm run dev
 > **與 Page Assist 等 Ollama 瀏覽器插件的相衝突問題：**
 > 若您安裝並啟用了 [Page Assist](https://chromewebstore.google.com/detail/page-assist-a-web-ui-for/jfgfiigpkhlkbnfnbobbkinehhfdhndo) 等 Ollama 網頁輔助插件，它們會在 Chrome 一般模式下自動攔截所有發往 Ollama 的請求。此攔截機制會將請求的 `Origin` 標頭竄改為目標主機，雖然騙過了伺服器端，但會導致瀏覽器本身以 CORS 安全錯誤阻擋回應（顯示 `net::ERR_CONNECTION_REFUSED` 或 CORS Header 缺失）。
 > **解決方法：請暫時停用 Page Assist 插件、將您的自訂 Ollama 網域加入排除名單，或者改用無痕模式/無安裝該插件的瀏覽器（如 Firefox）進行測試。** *(在 API 連線測試失敗時，系統也會在錯誤訊息中提供此項診斷提示，方便您快速定位問題。)*
+
+> [!WARNING]
+> **Ollama 雲端模型 (`:cloud` 後綴) 的使用限制：**
+> 如果您在使用地端 Ollama 服務時，試圖選取帶有 `:cloud` 後綴的雲端模型（需事先透過 `ollama signin` 登入），**在純前端版本 (llmchat-ui) 中將無法使用並會引發連線錯誤**。原因是 Ollama 伺服器在代理這些模型時，會發生跨網域重定向，進而觸發瀏覽器嚴格的 CORS 安全阻擋。若您必須使用 Ollama 的 `:cloud` 雲端模型，請改用「有後台版本」的 `llmchat`，因為 Node.js 後端不受瀏覽器 CORS 政策的限制。
 
 ### ☁️ 部署說明
 
