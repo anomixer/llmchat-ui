@@ -132,12 +132,12 @@ const App: React.FC = () => {
                 return {
                     type: parsed.type || 'ollama',
                     model: parsed.model || '',
-                    temperature: parsed.temperature || 0.7,
-                    maxTokens: parsed.maxTokens || 8192,
+                    temperature: parsed.temperature ?? 0.7,
+                    maxTokens: parsed.maxTokens ?? 8192,
                     apiUrl: parsed.baseUrl || 'http://127.0.0.1:11434',
                     apiKey: parsed.apiKey || '',
-                    topP: parsed.topP || 0.9,
-                    topK: parsed.topK || 40,
+                    topP: parsed.topP ?? 0.9,
+                    topK: parsed.topK ?? 40,
                     showTokenStats: true,
                     visionModel: parsed.visionModel || ''
                 }
@@ -488,10 +488,10 @@ const App: React.FC = () => {
                         apiUrl: parsed.baseUrl || 'http://localhost:11434',
                         apiKey: parsed.apiKey || '',
                         model: parsed.model || '',
-                        temperature: parsed.temperature || 0.7,
-                        maxTokens: parsed.maxTokens || 8192,
-                        topP: parsed.topP || 0.9,
-                        topK: parsed.topK || 40,
+                        temperature: parsed.temperature ?? 0.7,
+                        maxTokens: parsed.maxTokens ?? 8192,
+                        topP: parsed.topP ?? 0.9,
+                        topK: parsed.topK ?? 40,
                         visionModel: parsed.visionModel || ''
                     }
                 } catch (e) {
