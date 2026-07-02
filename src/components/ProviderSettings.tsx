@@ -529,7 +529,7 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
 
                     {/* Context Size */}
                     <div>
-                        <label className="block text-sm font-medium mb-2">{t('admin.llm.contextSize', 'Max Tokens')}: {maxTokens}</label>
+                        <label className="block text-sm font-medium mb-2">{t('admin.llm.contextSize', 'Max Context Size')}: {maxTokens}</label>
                         <input
                             type="number"
                             min="256"

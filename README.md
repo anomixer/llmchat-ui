@@ -23,7 +23,7 @@ A modern, glassmorphic LLM client interface running entirely in your browser. It
 - **Direct API Connectivity**: Direct connection to local Ollama (`http://localhost:11434`) or cloud providers (OpenAI, DeepSeek, Groq, or any OpenAI-compatible API URL).
 - **DeepSeek R1 & Reasoning Support**: Beautiful display of reasoning steps for thinking models (e.g. DeepSeek R1), with collapsible reasoning/thinking blocks.
 - **Glassmorphic UI**: High-end glassmorphism design with responsive dark/light/system theme modes, featuring a spacious 2x2 grid layout for AI provider configurations.
-- **Rich Generation Controls**: Fine-tune your AI responses with comprehensive parameters including Temperature, Top P, Top K, and Max Tokens (Context Size).
+- **Rich Generation Controls**: Fine-tune your AI responses with comprehensive parameters including Temperature, Top P, Top K, and Max Context Size.
 - **Rich Interaction**: Supports voice speech-to-text input, text-to-speech audio outputs, file attachments (context sharing), code blocks copy-pasting, and markdown rendering.
 - **Keyboard Shortcuts**: Maximize efficiency with built-in hotkeys.
 - **Data Portability**: Import and export your conversations to JSON or Markdown formats.
@@ -113,7 +113,7 @@ Because LLMChat-UI runs entirely in the browser, direct cloud API connections (e
 - **多元 AI 供應商連線**：支援本地 Ollama (`http://localhost:11434`)，以及 OpenAI, DeepSeek, Groq 或者是任何自定義的 OpenAI 規格網址。
 - **DeepSeek R1 思考過程顯示**：完整支援流式思考輸出，提供精美的可折疊思考區塊，方便閱讀推理過程。
 - **現代玻璃擬態介面**：極致美學的毛玻璃設計，具備亮色、暗色與隨系統變換的自適應主題，並配備寬敞的 2x2 網格 AI 供應商配置介面。
-- **進階生成參數控制**：支援完整的模型微調參數，包含 Temperature、Top P、Top K 與 Max Tokens (Context Size)。
+- **進階生成參數控制**：支援完整的模型微調參數，包含 Temperature、Top P、Top K 與 Max Context Size。
 - **多功能對話輔助**：支援語音辨識輸入、語音朗讀、文字與檔案上傳（作為對話上下文）、程式碼區塊一鍵複製等。
 - **快捷鍵操作**：使用鍵盤快捷鍵快速新增對話、清除內容、開啟設定，提供專業使用者高效率工作流。
 - **對話匯入與匯出**：可一鍵將對話記錄匯出為 JSON 與 Markdown 格式。

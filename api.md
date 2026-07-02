@@ -179,3 +179,9 @@ LLMChat-UI 是一個純前端架構的應用程式。本文件詳細記錄了應
   event: content_block_delta
   data: {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "Hello"}}
   ```
+
+---
+
+## ❌ 錯誤處理說明
+
+本專案為純前端架構。當直連的 API（如本地 Ollama, OpenAI 規格之 API）發生非 200 之 HTTP 錯誤時，前端的 `useChatStreaming` 會自動讀取連線回應的主體（Body）內容，並以 `[HTTP狀態碼]: 錯誤主體` 的格式拋出例外，例如 `[400]: {"error":"max_tokens exceeds..."}`，以利在對話介面上直接呈現供除錯使用。

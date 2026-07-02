@@ -169,6 +169,24 @@ export function useChatStreaming() {
             const apiUrl = settings.apiUrl || 'http://localhost:11434'
             const apiKey = settings.apiKey || ''
 
+            // Calculate system date time and warning suffix to prevent date hallucination (re-trigger build)
+            const now = new Date()
+            const year = now.toLocaleDateString('zh-TW', { year: 'numeric' }).replace('年', '').trim()
+            const month = now.toLocaleDateString('zh-TW', { month: 'numeric' }).replace('月', '').trim()
+            const day = now.toLocaleDateString('zh-TW', { day: 'numeric' }).replace('日', '').trim()
+            const weekdayZh = now.toLocaleDateString('zh-TW', { weekday: 'long' })
+            const monthEn = now.toLocaleDateString('en-US', { month: 'long' })
+            const dateStr = `${year}年${month}月${day}日 ${weekdayZh} (${monthEn} ${day}, ${year})`
+
+            const baseSystemPrompt = settings.systemPrompt || i18n.t('systemPrompt', 'You are a helpful AI assistant.')
+            const parsedMonth = parseInt(month)
+            const parsedDay = parseInt(day)
+            let warningSuffix = ''
+            if (parsedMonth <= 12 && parsedDay <= 12 && parsedMonth !== parsedDay) {
+                warningSuffix = `（請注意：今天是 ${parsedMonth} 月 ${parsedDay} 日，不要將月和日混淆誤判成 ${parsedDay} 月 ${parsedMonth} 日）`
+            }
+            const finalSystemPrompt = `${baseSystemPrompt}\n\n[目前系統時間]\n${dateStr}\n請務必以此系統時間為基準，回答使用者關於「今天」、「明天」、「後天」、「星期幾」或日期時間相關的提問。${warningSuffix}`
+
             let effectiveModel = settings.model || 'llama3'
             if (images && images.length > 0 && settings.visionModel && settings.visionModel !== settings.model) {
                 effectiveModel = settings.visionModel
@@ -198,6 +216,10 @@ export function useChatStreaming() {
                     body: JSON.stringify({
                         model: effectiveModel,
                         messages: [
+                            {
+                                role: 'system',
+                                content: finalSystemPrompt
+                            },
                             ...history.map(msg => ({
                                 role: msg.role,
                                 content: msg.content
@@ -212,7 +234,7 @@ export function useChatStreaming() {
                             temperature: settings.temperature ?? 0.7,
                             top_p: settings.topP ?? 0.9,
                             top_k: settings.topK ?? 40,
-                            num_predict: settings.maxTokens ?? 2048
+                            ...(settings.maxTokens ? { num_ctx: settings.maxTokens } : {})
                         },
                         stream: true
                     }),
@@ -239,12 +261,8 @@ export function useChatStreaming() {
                     temperature: settings.temperature ?? 0.7,
                     top_p: settings.topP ?? 0.9,
                     top_k: settings.topK ?? 40,
-                    stream: true
-                }
-
-                const systemPrompt = settings.systemPrompt || 'You are a helpful AI assistant.'
-                if (systemPrompt) {
-                    payload.system = systemPrompt
+                    stream: true,
+                    system: finalSystemPrompt
                 }
 
                 response = await fetch(chatUrl, {
@@ -277,6 +295,10 @@ export function useChatStreaming() {
                 const payload: any = {
                     model: effectiveModel,
                     messages: [
+                        {
+                            role: 'system',
+                            content: finalSystemPrompt
+                        },
                         ...history.map(msg => ({
                             role: msg.role,
                             content: msg.content
@@ -305,7 +327,7 @@ export function useChatStreaming() {
 
             if (!response.ok) {
                 const errText = await response.text().catch(() => '')
-                throw new Error(`HTTP error! status: ${response.status}${errText ? ` - ${errText}` : ''}`)
+                throw new Error(`[${response.status}]: ${errText || response.statusText}`)
             }
 
             const reader = response.body?.getReader()

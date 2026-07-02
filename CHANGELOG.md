@@ -4,6 +4,21 @@
 
 ---
 
+### v260702 (2026-07-02)
+
+- 🛠️ **模型設定與參數解析優化 (Fix Ollama Cloud & 400 parameter errors)**:
+  - 修正了在對話發送時，`useChatStreaming` 錯誤地將 `maxTokens`（Context Size）套用到 `num_predict` 的問題。現在只會正確地將其套用為 `num_ctx`，解決了 Ollama Cloud 上 `:cloud` 模型及部分 OpenAI 相容 API（如 9router/Groq）因 Context 設太大而觸發單次輸出上限（HTTP 400 Bad Request）的 Bug。
+- 👁️ **API 錯誤診斷機制大提升**:
+  - 前端配合將底層詳細錯誤資訊直接呈現在對話卡片上，取代原本含糊的「抱歉，發生錯誤。請檢查後端服務是否正常運行。」，以 `[HTTP狀態碼]: 錯誤主體` 的格式（例如 `[400]: {"error":"max_tokens..."}`）顯示，供使用者即時診斷 API 連線與參數問題。
+- 📅 **防止日期幻覺與 Ambiguity 警告 (Prevent Date Hallucination)**:
+  - 在發送對話時，前端 `useChatStreaming` 會自動獲取當前系統時間並轉換為 `YYYY年M月D日` 格式注入 System Prompt，並在月日小於等於 12 且不相等時（如 7 月 2 日）附帶月日防混淆警告，引導 AI 正確理解當下日期。
+- 🎨 **UI 介面微調 (Max Context Size 與選單寬度優化)**:
+  - 將 UI 及多國語系 locale 檔中的「Max Tokens (Context Size)」全面更名為更精確的 **「Max Context Size」**。
+  - 將頂部 Title 旁的模型選單下拉寬度由 `w-48`（192px）加寬至 **`w-80`（320px）**，並加上 `overflow-x-hidden`，徹底解決長模型名稱（如 `nvidia/minimaxai/minimax-m2.7`）在選單內折行或下方冒出左右滾動條的視覺問題。
+- 📝 **文件同步更新**：同步更新 `README.md`、`api.md` 與 `CHANGELOG.md` 並更新版號。
+
+---
+
 ### v260618 (2026-06-18)
 
 - 🎨 **重構 AI 供應商配置介面與版面升級**：
