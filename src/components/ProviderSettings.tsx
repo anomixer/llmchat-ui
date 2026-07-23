@@ -310,23 +310,21 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({
                 </div>
 
                 {/* API Key */}
-                {selectedProvider?.requiresApiKey ? (
-                    <div>
-                        <label className="block text-sm font-medium mb-2">{t('admin.llm.apiKey')} 🔑</label>
-                        <input
-                            type="password"
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                            placeholder="sk-..."
-                            className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {t('settings.apiKeyLocalHint', '您的 API Key 僅儲存於本機瀏覽器，不會上傳至任何伺服器。')}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="hidden md:block"></div>
-                )}
+                <div>
+                    <label className="block text-sm font-medium mb-2">
+                        {t('admin.llm.apiKey')} 🔑 {!selectedProvider?.requiresApiKey && ` (${t('admin.llm.optional', 'optional')})`}
+                    </label>
+                    <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder={selectedProvider?.requiresApiKey ? "sk-..." : t('admin.llm.apiKeyPlaceholder', 'API Key (可選)')}
+                        className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {t('settings.apiKeyLocalHint', '您的 API Key 僅儲存於本機瀏覽器，不會上傳至任何伺服器。')}
+                    </p>
+                </div>
 
                 {/* API URL */}
                 <div className="col-span-1 md:col-span-2">
