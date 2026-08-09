@@ -257,7 +257,7 @@ export function useChatStreaming() {
                         role: msg.role === 'assistant' ? 'assistant' : 'user',
                         content: msg.content
                     })).concat({ role: 'user', content: message }),
-                    max_tokens: settings.maxTokens || 4096,
+                    max_tokens: Math.min(settings.maxTokens || 4096, 4096),
                     temperature: settings.temperature ?? 0.7,
                     top_p: settings.topP ?? 0.9,
                     top_k: settings.topK ?? 40,
@@ -314,7 +314,7 @@ export function useChatStreaming() {
                 }
 
                 if (settings.maxTokens && settings.maxTokens > 0) {
-                    payload.max_tokens = settings.maxTokens
+                    payload.max_tokens = Math.min(settings.maxTokens, 4096)
                 }
 
                 response = await fetch(chatUrl, {

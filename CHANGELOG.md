@@ -4,6 +4,23 @@
 
 ---
 
+### v260809 (2026-08-09)
+
+- 📊 **新增 Context 用量指示器 (Context Token Usage Indicator)**:
+  - 於左上方模型選單右側新增一個用量指示器，即時顯示當前對話已消耗的 Token 數量以及所佔最大上下文 (Max Context Size) 的百分比比例，格式為：`"xxxK (nnn%)"`。
+  - 對話總 Token 包含了系統提示詞 (System Prompt)、歷史對話、以及當前正在串流中的文字，生成時可即時跳動更新。
+- 🗜️ **對話壓縮功能 (`/compact`)**:
+  - 當點擊 Context 用量指示器，或是使用者手動輸入 `/compact` 指令時，會自動觸發歷史對話壓縮（對話摘要）。
+  - 系統會調用 AI 將目前的對話記錄摘要成一段緊湊的「歷史摘要」，並將其作為 `System Prompt` 注入或作為隱藏的歷史起點，隨後清空過往詳細對話，將上下文佔用比例重置到最低，解決長對話爆 Token 限制的問題。
+- 🔄 **清除快取後模型載入同步邏輯修正**:
+  - 修正了當瀏覽器快取被清空時，重新加載首頁導致選用模型跳回清單第一個模型的 Bug。引進了「階層式模型選擇解析」，優先沿用資料庫回傳的 `serverSettings.model`。
+- 🐛 **Bug 修正 (發送端重複發送與 Token 估算跳動)**:
+  - 修正了發送請求時，最新使用者 Prompt 被重複組裝到 `history` 載荷中發送兩次的 Bug，大幅節省 Token 消耗。
+  - 修正了串流生成前後，由於未儲存的 `streamingMessage` 殘留以及助理 `msg.tokenCount` 低估所引起的「Token 用量顯示跳水/跳動」的問題。
+- 📝 **文件同步更新**：同步更新 `package.json` 與 `CHANGELOG.md` 並更新版號。
+
+---
+
 ### v260723 (2026-07-23)
 
 - 🔑 **地端 LLM 引擎支援選填 API Key (Optional API Key for Local Engines)**:

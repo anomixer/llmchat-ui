@@ -54,6 +54,7 @@ const App: React.FC = () => {
         conversationsLoaded,
         currentConversationId,
         setCurrentConversationId,
+        setConversations,
         createConversation,
         createNewConversation: createNewConversationInternal,
         addConversation,
@@ -262,7 +263,7 @@ const App: React.FC = () => {
     const loadAvailableModels = async (currentModelOverride?: string) => {
         try {
             setIsLoadingModels(true)
-            const effectiveModel = currentModelOverride !== undefined ? currentModelOverride : settings.model
+            const effectiveModel = currentModelOverride ? currentModelOverride : settings.model
 
             const adminSettings = localStorage.getItem('adminProviderSettings')
             let apiUrl = 'http://127.0.0.1:11434'
@@ -429,23 +430,59 @@ const App: React.FC = () => {
             setAvailableModels(models)
 
             if (models.length > 0) {
-                const isCurrentModelValid = models.some((m: any) => m.id === effectiveModel)
-                if (!effectiveModel || !isCurrentModelValid) {
-                    const fallbackModel = models[0].id
-                    setSettings(prev => ({ ...prev, model: fallbackModel }))
-                    setUserSettings(prev => ({ ...prev, model: fallbackModel }))
+                const existing = localStorage.getItem('adminProviderSettings')
+                if (existing) {
                     try {
-                        const existing = localStorage.getItem('adminProviderSettings')
-                        if (existing) {
-                            const parsed = JSON.parse(existing)
-                            parsed.model = fallbackModel
-                            localStorage.setItem('adminProviderSettings', JSON.stringify(parsed))
-                        }
+                        const parsed = JSON.parse(existing)
+                        // 同步所有參數，包括 maxTokens (Context Size)
+                        setSettings(prev => ({
+                            ...prev,
+                            type: parsed.type || prev.type,
+                            apiUrl: parsed.baseUrl || prev.apiUrl,
+                            apiKey: parsed.apiKey || prev.apiKey,
+                            temperature: parsed.temperature || prev.temperature,
+                            maxTokens: parsed.maxTokens || prev.maxTokens,
+                            topP: parsed.topP || prev.topP,
+                            topK: parsed.topK || prev.topK,
+                            visionModel: parsed.visionModel || prev.visionModel
+                        }))
+                        setUserSettings(prev => ({
+                            ...prev,
+                            type: parsed.type || prev.type,
+                            apiUrl: parsed.baseUrl || prev.apiUrl,
+                            apiKey: parsed.apiKey || prev.apiKey,
+                            temperature: parsed.temperature || prev.temperature,
+                            maxTokens: parsed.maxTokens || prev.maxTokens,
+                            topP: parsed.topP || prev.topP,
+                            topK: parsed.topK || prev.topK,
+                            visionModel: parsed.visionModel || prev.visionModel
+                        }))
                     } catch (e) {}
-                } else if (effectiveModel !== settings.model) {
-                    setSettings(prev => ({ ...prev, model: effectiveModel }))
-                    setUserSettings(prev => ({ ...prev, model: effectiveModel }))
                 }
+
+                // 階層解析選用模型：
+                // 1. 若當前的 effectiveModel 有效，保留它
+                // 2. 若無效，嘗試使用 admin settings 中儲存的 model
+                // 3. 仍無效，則使用模型列表的第一個模型
+                let selectedModel = ''
+                const isEffectiveModelValid = effectiveModel && models.some((m: any) => m.id === effectiveModel)
+                if (isEffectiveModelValid) {
+                    selectedModel = effectiveModel
+                } else {
+                    let adminModel = ''
+                    if (existing) {
+                        try {
+                            const parsed = JSON.parse(existing)
+                            adminModel = parsed.model || ''
+                        } catch (e) {}
+                    }
+                    const isAdminModelValid = adminModel && models.some((m: any) => m.id === adminModel)
+                    selectedModel = isAdminModelValid ? adminModel : models[0].id
+                }
+
+                console.log(`確認選擇模型為: ${selectedModel}`)
+                setSettings(prev => ({ ...prev, model: selectedModel }))
+                setUserSettings(prev => ({ ...prev, model: selectedModel }))
             } else {
                 setSettings(prev => ({ ...prev, model: '' }))
                 setUserSettings(prev => ({ ...prev, model: '' }))
@@ -871,6 +908,11 @@ const App: React.FC = () => {
         if ((!input.trim() && attachedFiles.length === 0) || isLoading) return
 
         let messageContent = input.trim()
+        if (messageContent.toLowerCase() === '/compact') {
+            setInput('')
+            handleCompactConversation()
+            return
+        }
         if (attachedFiles.length > 0) {
             messageContent = messageContent + '\n\n[' + t('input.files.attachedFiles', '附加檔案') + ': ' + attachedFiles.map(f => f.name).join(', ') + ']'
         }
@@ -919,7 +961,7 @@ const App: React.FC = () => {
 
         try {
             const baseConversation = conversations.find(c => c.id === conversationId)
-            const historyMessages = [...(baseConversation?.messages || []), userMessage]
+            const historyMessages = baseConversation?.messages || []
 
             let finalSettings = settings
             const hasImage = images.length > 0
@@ -1048,6 +1090,104 @@ const App: React.FC = () => {
         }
     }
 
+    const handleCompactConversation = async () => {
+        if (currentMessages.length < 3) {
+            alert(t('conversation.compact.tooShort', '對話訊息尚少，無須壓縮！'))
+            return
+        }
+        if (isLoading || isStreaming) {
+            alert(t('conversation.compact.busy', '系統忙碌中，請稍後再試。'))
+            return
+        }
+
+        const confirmed = window.confirm(t('conversation.compact.confirm', '確定要壓縮當前對話歷史以節省空間嗎？舊的對話將被自動摘要以釋放 Context 空間。'))
+        if (!confirmed) return
+
+        setIsLoading(true)
+        
+        // 保留最後兩條訊息，壓縮其餘所有舊訊息
+        const messagesToCompress = currentMessages.slice(0, -2)
+        const preservedMessages = currentMessages.slice(-2)
+
+        const historyText = messagesToCompress
+            .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+            .join('\n\n')
+
+        // 插入一個臨時的載入訊息
+        const tempMsgId = 'compact-temp-' + Date.now()
+        const tempMessage: Message = {
+            id: tempMsgId,
+            role: 'assistant',
+            content: '⏳ ' + t('conversation.compact.processing', '正在壓縮歷史對話中，請稍候...'),
+            timestamp: new Date()
+        }
+        
+        appendMessage(currentConversationId, tempMessage)
+
+        try {
+            // 解析當前的 LLM 設定
+            const adminSettings = localStorage.getItem('adminProviderSettings')
+            let finalSettings = { ...settings }
+            if (adminSettings) {
+                try {
+                    const parsed = JSON.parse(adminSettings)
+                    finalSettings = {
+                        ...settings,
+                        type: parsed.type || settings.type,
+                        apiUrl: parsed.baseUrl ?? settings.apiUrl,
+                        apiKey: parsed.apiKey || settings.apiKey,
+                        temperature: parsed.temperature ?? settings.temperature,
+                        maxTokens: parsed.maxTokens ?? settings.maxTokens,
+                        topP: parsed.topP ?? settings.topP,
+                        topK: parsed.topK ?? settings.topK
+                    }
+                } catch (e) {}
+            }
+
+            const prompt = t('system.summarizationPrompt', '請對以下對話歷史進行結構化的詳細摘要。摘要中必須保留：1. 討論的核心主題與上下文脈絡；2. 使用者特別提出的具體需求、偏好與關鍵設定；3. 雙方達成的最終結論、產出的程式碼關鍵段落或解決方案。請使用與對話相同的語言撰寫，直接輸出摘要，不要包含任何引言或解釋，確保 AI 閱讀此摘要後能完全承接先前的記憶與細節。')
+            
+            const result = await streamChat({
+                message: historyText,
+                settings: {
+                    ...finalSettings,
+                    systemPrompt: prompt,
+                    temperature: 0.3
+                },
+                history: [],
+                language: i18n.language
+            })
+
+            const summaryText = result.content.trim()
+            const summaryMessage: Message = {
+                id: 'summary-' + Date.now(),
+                role: 'assistant',
+                content: `📝 **${t('conversation.compact.summaryTitle', '先前對話歷史摘要')}**:\n\n${summaryText}\n\n---`,
+                timestamp: new Date()
+            }
+
+            // 更新 Conversation 狀態
+            const newMessages = [summaryMessage, ...preservedMessages]
+            setConversations(prev =>
+                prev.map(c =>
+                    c.id === currentConversationId ? { ...c, messages: newMessages, updatedAt: new Date() } : c
+                )
+            )
+        } catch (error) {
+            console.error('Failed to compact conversation:', error)
+            alert(t('conversation.compact.failed', '壓縮歷史對話時發生錯誤。') + '\n\nDetails: ' + (error instanceof Error ? error.message : String(error)))
+            // 移除臨時訊息
+            setConversations(prev =>
+                prev.map(c =>
+                    c.id === currentConversationId
+                        ? { ...c, messages: c.messages.filter(m => m.id !== tempMsgId), updatedAt: new Date() }
+                        : c
+                )
+            )
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
@@ -1057,6 +1197,11 @@ const App: React.FC = () => {
                 </div>
             </div>
         )
+    }
+
+    const tokenUsage = {
+        used: estimateConversationTokens(currentMessages, settings.systemPrompt, streamingMessage, streamingThinking, isStreaming),
+        max: settings.maxTokens || 8192
     }
 
     return (
@@ -1070,6 +1215,8 @@ const App: React.FC = () => {
                 conversations={conversations}
                 availableModels={availableModels}
                 isLoadingModels={isLoadingModels}
+                tokenUsage={tokenUsage}
+                onCompactConversation={handleCompactConversation}
                 currentTheme={(userSettings.theme as 'auto' | 'light' | 'dark')}
                 onToggleTheme={toggleTheme}
                 onToggleFullscreen={toggleFullscreen}
@@ -1750,6 +1897,68 @@ const App: React.FC = () => {
             )}
         </div>
     )
+}
+
+// Token estimation helpers
+function estimateTokens(text: string): number {
+    if (!text) return 0
+    let tokens = 0
+    // CJK characters match range: Chinese, Japanese, Korean
+    const cjkRegex = /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf\uac00-\ud7a3]/g
+    const cjkMatches = text.match(cjkRegex)
+    const cjkCount = cjkMatches ? cjkMatches.length : 0
+    
+    const remainingText = text.replace(cjkRegex, ' ')
+    const words = remainingText.trim().split(/\s+/)
+    let englishTokens = 0
+    if (words.length > 0 && words[0] !== '') {
+        englishTokens = Math.ceil(words.length * 1.3)
+    }
+    
+    tokens = Math.ceil(cjkCount * 1.2) + englishTokens
+    return tokens
+}
+
+function estimateConversationTokens(
+    messages: Message[], 
+    baseSystemPrompt?: string, 
+    streamingMessage?: string, 
+    streamingThinking?: string,
+    isStreaming?: boolean
+): number {
+    let total = 0
+    // Estimate System Prompt
+    const systemPrompt = baseSystemPrompt || 'You are a helpful AI assistant.'
+    total += estimateTokens(systemPrompt)
+    total += 10 // buffer for system date/time warning suffix
+    
+    // Add messages in history
+    for (const msg of messages) {
+        if (msg.role === 'assistant') {
+            total += estimateTokens(msg.content)
+            if (msg.thinking) {
+                total += estimateTokens(msg.thinking)
+            }
+        } else {
+            total += estimateTokens(msg.hiddenContent || msg.content)
+        }
+        total += 4 // overhead per message
+    }
+    
+    // Add active streaming message
+    if (isStreaming) {
+        if (streamingMessage) {
+            total += estimateTokens(streamingMessage)
+        }
+        if (streamingThinking) {
+            total += estimateTokens(streamingThinking)
+        }
+        if (streamingMessage || streamingThinking) {
+            total += 4 // overhead
+        }
+    }
+    
+    return total
 }
 
 export default App
