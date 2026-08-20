@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Bot, User, Settings, Trash2, Moon, Sun, Plus, MessageSquare, Paperclip, X, Mic, MicOff, Volume2, Download, Square, Maximize2, Minimize2, RefreshCw, Globe } from 'lucide-react'
+import { Send, Bot, User, Settings, Trash2, Paperclip, X, Mic, MicOff, Volume2, Square, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import MarkdownMessage from './MarkdownMsg'
 import { Header } from './components/Header'
@@ -14,6 +14,7 @@ import { useAutoScroll } from './hooks/useAutoScroll'
 import { useApplyThemeClasses, usePrefersColorSchemeSync } from './hooks/useThemeEffects'
 import { ProviderSettings } from './components/ProviderSettings'
 import { resolveEndpoints } from './utils/url'
+import { makeMessageId } from './utils/id'
 
 interface ChatSettings {
     type?: string
@@ -26,6 +27,7 @@ interface ChatSettings {
     topK: number
     showTokenStats: boolean
     visionModel: string
+    systemPrompt?: string
 }
 
 import { AVAILABLE_PROVIDERS } from './utils/providers'
@@ -36,8 +38,6 @@ const App: React.FC = () => {
     // 純前端訪客使用者與 Token 模擬
     const user = { email: 'guest@llmchat-ui.local', role: 'user', id: 'guest' }
     const token = 'guest-token'
-    const authLoading = false
-    const authError = null
 
     const logout = () => {
         const confirmed = window.confirm(t('header.clearConfirm', "確定要清除所有對話與設定嗎？此動作將重置整個應用程式。"))
@@ -936,7 +936,7 @@ const App: React.FC = () => {
         }
 
         const userMessage: Message = {
-            id: Date.now().toString(),
+            id: makeMessageId(),
             role: 'user',
             content: messageContent,
             hiddenContent: hiddenContent !== messageContent ? hiddenContent : undefined,
@@ -995,7 +995,7 @@ const App: React.FC = () => {
             })
 
             const assistantMessage: Message = {
-                id: (Date.now() + 1).toString(),
+                id: makeMessageId(),
                 role: 'assistant',
                 content: result.wasInterrupted ? result.content + '\n\n**' + t('messages.interrupted') + '**' : result.content,
                 thinking: result.thinking || undefined,
@@ -1016,7 +1016,7 @@ const App: React.FC = () => {
         } catch (error) {
             console.error('Error sending streaming message:', error)
             const errorMessage: Message = {
-                id: (Date.now() + 1).toString(),
+                id: makeMessageId(),
                 role: 'assistant',
                 content: `${t('messages.error')}\n\n${(error as any)?.message || ''}`,
                 timestamp: new Date()
@@ -1114,7 +1114,7 @@ const App: React.FC = () => {
             .join('\n\n')
 
         // 插入一個臨時的載入訊息
-        const tempMsgId = 'compact-temp-' + Date.now()
+        const tempMsgId = makeMessageId('compact-temp')
         const tempMessage: Message = {
             id: tempMsgId,
             role: 'assistant',
@@ -1159,7 +1159,7 @@ const App: React.FC = () => {
 
             const summaryText = result.content.trim()
             const summaryMessage: Message = {
-                id: 'summary-' + Date.now(),
+                id: makeMessageId('summary'),
                 role: 'assistant',
                 content: `📝 **${t('conversation.compact.summaryTitle', '先前對話歷史摘要')}**:\n\n${summaryText}\n\n---`,
                 timestamp: new Date()
@@ -1186,17 +1186,6 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false)
         }
-    }
-
-    if (authLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-                <div className="text-center">
-                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">{t('app.loading', '載入中...')}</p>
-                </div>
-            </div>
-        )
     }
 
     const tokenUsage = {

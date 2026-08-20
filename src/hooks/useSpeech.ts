@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { makeMessageId } from '../utils/id'
 
 type SpeechQueueItem = {
     id: string
@@ -205,7 +206,7 @@ export function useSpeech(args: UseSpeechArgs) {
             }
 
             const queueItem: SpeechQueueItem = {
-                id: Date.now().toString(),
+                id: makeMessageId('speech'),
                 text,
                 messageId,
                 timestamp: new Date()

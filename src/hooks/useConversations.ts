@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { makeMessageId } from '../utils/id'
 
 export interface Message {
     id: string
@@ -44,7 +45,7 @@ export function useConversations(args: UseConversationsArgs) {
     const initialConversation = useMemo<Conversation>(() => {
         const now = new Date()
         return {
-            id: Date.now().toString(),
+            id: makeMessageId('conv'),
             title: getDefaultConversationTitle(1),
             messages: [],
             createdAt: now,
@@ -109,7 +110,7 @@ export function useConversations(args: UseConversationsArgs) {
             const now = new Date()
             const messages = args.messages ?? []
             return {
-                id: Date.now().toString(),
+                id: makeMessageId('conv'),
                 title: args.title,
                 messages,
                 createdAt: now,

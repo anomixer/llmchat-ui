@@ -24,9 +24,19 @@
         "export": {
             "button": "导出对话",
             "json": "导出为 JSON",
-            "markdown": "导出为 Markdown"
+            "markdown": "导出为 Markdown",
+            "created": "创建时间",
+            "updated": "最后更新"
         },
-        "newTitle": "对话 {{count}}"
+        "newTitle": "对话 {{count}}",
+        "compact": {
+            "tooShort": "对话消息还少，无需压缩！",
+            "busy": "系统忙碌中，请稍后再试。",
+            "confirm": "确定要压缩当前对话历史以节省空间吗？旧的对话将被自动摘要以释放 Context 空间。",
+            "processing": "正在压缩历史对话中，请稍候...",
+            "summaryTitle": "先前对话历史摘要",
+            "failed": "压缩历史对话时发生错误。"
+        }
     },
     "buttons": {
         "send": "发送消息",
@@ -38,7 +48,9 @@
         "model": {
             "none": "未选择模型",
             "openSettings": "点击开启设置",
-            "closeSettings": "点击关闭设置"
+            "closeSettings": "点击关闭设置",
+            "loading": "(加载中...)",
+            "noModels": "(找不到模型)"
         },
         "conversations": {
             "button": "对话列表 (Ctrl + B)",
@@ -61,7 +73,8 @@
         "adminButton": "用户管理",
         "clearConfirm": "确定要清除所有对话与设置吗？此动作将重置整个应用程序。",
         "clearCache": "清除缓存并重置",
-        "clearCacheTooltip": "清除缓存与重置应用程序"
+        "clearCacheTooltip": "清除缓存与重置应用程序",
+        "contextUsage": "上下文用量 (已用/最大)，点击压缩 (/compact)"
     },
     "settings": {
         "configureApiAndModel": "配置 API 与模型",
@@ -164,7 +177,7 @@
             "button": "附加文件 (支持图片、文字、PDF、JSON，最大50MB)",
             "sizeError": "文件 {{name}} 太大，请选择小于 50MB 的文件",
             "typeError": "文件类型 {{type}} 不支持",
-            "pdfNote": "注意：PDF内容无法在浏览器中直接解析。如需分析PDF内容，请考虑将PDF转换为文字文件后上传，或使用支持PDF解析的服务。",
+            "pdfNote": "注意：PDF内容无法在浏览器中直接解析。如需分析PDF内容，请考虑将PDF转换为文本文件后上传，或使用支持PDF解析的服务。",
             "pdfFile": "PDF文件",
             "attachedFiles": "附加文件"
         },
@@ -434,5 +447,8 @@
     },
     "chat": {
         "stopConfirm": "再按一次停止生成"
+    },
+    "system": {
+        "summarizationPrompt": "请对以下对话历史进行结构化的详细摘要。摘要中必须保留：1. 讨论的核心主题与上下文脉络；2. 使用者特别提出的具体需求、偏好与关键设置；3. 双方达成的最终结论、产出的代码关键段落或解决方案。请使用与对话相同的语言撰写，直接输出摘要，不要包含任何引言或解释，确保 AI 阅读此摘要后能完全承接先前的记忆与细节。"
     }
 }

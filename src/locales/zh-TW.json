@@ -28,7 +28,15 @@
             "created": "創建時間",
             "updated": "最後更新"
         },
-        "newTitle": "對話 {{count}}"
+        "newTitle": "對話 {{count}}",
+        "compact": {
+            "tooShort": "對話訊息尚少，無須壓縮！",
+            "busy": "系統忙碌中，請稍後再試。",
+            "confirm": "確定要壓縮當前對話歷史以節省空間嗎？舊的對話將被自動摘要以釋放 Context 空間。",
+            "processing": "正在壓縮歷史對話中，請稍候...",
+            "summaryTitle": "先前對話歷史摘要",
+            "failed": "壓縮歷史對話時發生錯誤。"
+        }
     },
     "buttons": {
         "send": "發送消息",
@@ -40,7 +48,9 @@
         "model": {
             "none": "未選擇模型",
             "openSettings": "點擊開啟設定",
-            "closeSettings": "點擊關閉設定"
+            "closeSettings": "點擊關閉設定",
+            "loading": "(載入中...)",
+            "noModels": "(找不到模型)"
         },
         "conversations": {
             "button": "對話列表 (Ctrl + B)",
@@ -63,7 +73,8 @@
         "adminButton": "用戶管理",
         "clearConfirm": "確定要清除所有對話與設定嗎？此動作將重置整個應用程式。",
         "clearCache": "清除快取並重置",
-        "clearCacheTooltip": "清除快取與重置應用程式"
+        "clearCacheTooltip": "清除快取與重置應用程式",
+        "contextUsage": "上下文用量 (已用/最大)，點擊壓縮 (/compact)"
     },
     "settings": {
         "configureApiAndModel": "配置 API 與模型",
@@ -436,5 +447,8 @@
     },
     "chat": {
         "stopConfirm": "再按一次停止生成"
+    },
+    "system": {
+        "summarizationPrompt": "請對以下對話歷史進行結構化的詳細摘要。摘要中必須保留：1. 討論的核心主題與上下文脈絡；2. 使用者特別提出的具體需求、偏好與關鍵設定；3. 雙方達成的最終結論、產出的程式碼關鍵段落或解決方案。請使用與對話相同的語言撰寫，直接輸出摘要，不要包含任何引言或解釋，確保 AI 閱讀此摘要後能完全承接先前的記憶與細節。"
     }
 }
